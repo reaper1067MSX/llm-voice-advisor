@@ -283,9 +283,23 @@ def run_interactive_loop(config) -> None:
             print(f"❌ Error al procesar respuesta con la IA: {e}", flush=True)
             print("🎧 Listo. Esperando tu siguiente pregunta...\n", flush=True)
 
+    # Setup global uncaught exception handler to prevent any orphan processes on crash
+    def global_excepthook(exctype, value, tb):
+        import traceback
+        print("\n💥 Excepción inesperada detectada:", flush=True)
+        traceback.print_exception(exctype, value, tb)
+        cleanup_and_exit()
+
+    sys.excepthook = global_excepthook
+
     try:
         listener.listen_ptt_loop(on_press, on_release)
     except KeyboardInterrupt:
+        cleanup_and_exit()
+    except Exception as e:
+        import traceback
+        print(f"\n💥 Error inesperado durante la ejecución: {e}", flush=True)
+        traceback.print_exc()
         cleanup_and_exit()
 
 

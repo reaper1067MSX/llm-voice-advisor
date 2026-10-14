@@ -48,16 +48,44 @@ def play_beep(freq: int, duration_ms: int) -> None:
 
 
 def _setup_cuda_dlls() -> None:
-    """Add virtualenv nvidia DLL paths to Windows DLL search directory if present."""
+    """Add virtualenv nvidia DLL paths to Windows DLL search directory, PATH, and preload them."""
     if os.name == "nt":
-        venv_path = os.environ.get("VIRTUAL_ENV")
-        if venv_path:
-            lib_site = os.path.join(venv_path, "Lib", "site-packages")
-            for pkg in ["nvidia_cublas_cu12", "nvidia_cudnn_cu12", "ctranslate2"]:
-                bin_dir = os.path.join(lib_site, pkg, "bin")
-                if os.path.isdir(bin_dir) and hasattr(os, "add_dll_directory"):
+        import sys
+
+        candidate_dirs = []
+        for p in sys.path:
+            if "site-packages" in p:
+                nvidia_dir = os.path.join(p, "nvidia")
+                if os.path.isdir(nvidia_dir):
+                    for sub in ["cublas", "cudnn", "cuda_nvrtc"]:
+                        b = os.path.join(nvidia_dir, sub, "bin")
+                        if os.path.isdir(b):
+                            candidate_dirs.append(b)
+                ct2_dir = os.path.join(p, "ctranslate2")
+                if os.path.isdir(ct2_dir):
+                    candidate_dirs.append(ct2_dir)
+
+        for d in candidate_dirs:
+            if hasattr(os, "add_dll_directory"):
+                try:
+                    os.add_dll_directory(d)
+                except Exception:
+                    pass
+            if d not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
+
+        # Preload essential CUDA DLLs into process memory for CTranslate2
+        for d in candidate_dirs:
+            for dll_name in [
+                "cublas64_12.dll",
+                "cublasLt64_12.dll",
+                "cudnn64_9.dll",
+                "cudnn_ops64_9.dll",
+            ]:
+                full_path = os.path.join(d, dll_name)
+                if os.path.isfile(full_path):
                     try:
-                        os.add_dll_directory(bin_dir)
+                        ctypes.CDLL(full_path)
                     except Exception:
                         pass
 
@@ -97,6 +125,38 @@ class AudioListener:
             )
 
         return self._whisper
+
+    def transcribe_audio(self, audio_data: np.ndarray) -> Optional[str]:
+        """Transcribe audio with GPU acceleration and automatic CPU fallback."""
+        try:
+            model = self.init_whisper()
+            segments, _ = model.transcribe(
+                audio_data,
+                language=self.config.language,
+                vad_filter=True,
+                beam_size=5,
+            )
+            transcript = " ".join(seg.text.strip() for seg in segments).strip()
+            return transcript if transcript else None
+        except Exception as e:
+            print(f"\n⚠️ Aviso en transcripción GPU ({e}). Usando Whisper CPU...", flush=True)
+            try:
+                self._whisper = WhisperModel(
+                    self.config.whisper_model,
+                    device="cpu",
+                    compute_type="int8",
+                )
+                segments, _ = self._whisper.transcribe(
+                    audio_data,
+                    language=self.config.language,
+                    vad_filter=True,
+                    beam_size=5,
+                )
+                transcript = " ".join(seg.text.strip() for seg in segments).strip()
+                return transcript if transcript else None
+            except Exception as e_cpu:
+                print(f"❌ Error al transcribir en CPU: {e_cpu}", flush=True)
+                return None
 
     def _audio_callback(self, indata, frames, time_info, status):
         """Warm stream callback: computes RMS and queues audio blocks."""
@@ -233,14 +293,7 @@ class AudioListener:
                             print(f"[{now_str}] 🛑 [TECLA SOLTADA] ({press_duration:.2f}s). Transcribiendo en GPU...", flush=True)
                             audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
                             recorded_chunks = []
-                            model = self.init_whisper()
-                            segments, _ = model.transcribe(
-                                audio_data,
-                                language=self.config.language,
-                                vad_filter=True,
-                                beam_size=5,
-                            )
-                            transcript = " ".join(seg.text.strip() for seg in segments).strip()
+                            transcript = self.transcribe_audio(audio_data)
                             if transcript:
                                 on_release_callback(transcript)
                             else:
@@ -300,14 +353,7 @@ class AudioListener:
                         audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
                         recorded_chunks = []
 
-                        model = self.init_whisper()
-                        segments, _ = model.transcribe(
-                            audio_data,
-                            language=self.config.language,
-                            vad_filter=True,
-                            beam_size=5,
-                        )
-                        transcript = " ".join(seg.text.strip() for seg in segments).strip()
+                        transcript = self.transcribe_audio(audio_data)
 
                         if transcript:
                             # Optional wake word filter
