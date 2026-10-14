@@ -62,12 +62,17 @@ listener:
 
 speaker:
   engine: "edge-tts"
-  # Voz femenina en español de México (Dalia)
-  voice: "es-MX-DaliaNeural"
-  # Alternativa masculina si se desea cambiar:
-  # voice: "es-MX-JorgeNeural"
-  rate: "+5%"
+  # Catálogo de voces femeninas naturales (menos robóticas):
+  #   "es-CO-SalomeNeural"  -> Salomé (Colombia): Tono cálido, dulce, muy humano y fluido (RECOMENDADA)
+  #   "es-ES-ElviraNeural"  -> Elvira (España): Expresiva, natural y excelente prosodia
+  #   "es-ES-XimenaNeural"  -> Ximena (España): Tono joven, moderno y dinámico
+  #   "es-PE-CamilaNeural"  -> Camila (Perú): Suave, pausada, amigable y clara
+  #   "es-US-PalomaNeural"  -> Paloma (EE.UU. / Neutro): Neutra, ágil y conversacional
+  #   "es-MX-DaliaNeural"   -> Dalia (México): Profesional y formal
+  voice: "es-CO-SalomeNeural"
+  rate: "+0%"
   volume: "+0%"
+  pitch: "+0Hz"
 
 reports:
   output_dir: "reports"

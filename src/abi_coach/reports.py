@@ -148,6 +148,152 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+from concurrent.futures import ThreadPoolExecutor
+import ctypes
+import os
+from pathlib import Path
+import subprocess
+import time
+from typing import Any, Callable, List, Optional, Tuple
+import webbrowser
+
+
+def _find_chrome_path() -> Optional[str]:
+    """Locate Google Chrome executable on Windows."""
+    candidates = [
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
+def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
+    """Get the working area bounds (x, y, w, h) of the secondary monitor if present."""
+    if os.name != "nt":
+        return None
+    try:
+        user32 = ctypes.windll.user32
+
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.c_ulong),
+                ("rcMonitor", ctypes.c_long * 4),
+                ("rcWork", ctypes.c_long * 4),
+                ("dwFlags", ctypes.c_ulong),
+            ]
+
+        secondary_bounds = None
+
+        def monitor_cb(hmon, hdc, lprect, lparam):
+            nonlocal secondary_bounds
+            mi = MONITORINFO()
+            mi.cbSize = ctypes.sizeof(MONITORINFO)
+            if user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+                is_primary = bool(mi.dwFlags & 1)
+                if not is_primary:
+                    x = mi.rcWork[0]
+                    y = mi.rcWork[1]
+                    w = mi.rcWork[2] - mi.rcWork[0]
+                    h = mi.rcWork[3] - mi.rcWork[1]
+                    secondary_bounds = (x, y, w, h)
+            return True
+
+        MONITORENUMPROC = ctypes.WINFUNCTYPE(
+            ctypes.c_bool,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_long * 4),
+            ctypes.c_void_p,
+        )
+        user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(monitor_cb), 0)
+        return secondary_bounds
+    except Exception:
+        return None
+
+
+def _bring_chrome_to_front_worker() -> None:
+    """Runs in clean thread to attach to user desktop, unminimize, and maximize Chrome."""
+    if os.name != "nt":
+        return
+    try:
+        user32 = ctypes.windll.user32
+        desk = user32.OpenInputDesktop(0, False, 0x01FF)
+        if desk:
+            user32.SetThreadDesktop(desk)
+
+        # Brief delay to allow Chrome to process the new tab IPC
+        time.sleep(0.4)
+
+        chrome_hwnds = []
+
+        def enum_cb(hwnd, lparam):
+            cls_buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, cls_buf, 256)
+            if cls_buf.value == "Chrome_WidgetWin_1" and user32.IsWindowVisible(hwnd):
+                title_buf = ctypes.create_unicode_buffer(256)
+                user32.GetWindowTextW(hwnd, title_buf, 256)
+                chrome_hwnds.append((hwnd, title_buf.value))
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
+
+        if not chrome_hwnds:
+            return
+
+        target_hwnd = chrome_hwnds[0][0]
+
+        # 1. Un-minimize if iconic
+        if user32.IsIconic(target_hwnd):
+            user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
+
+        # 2. Position on secondary monitor if available
+        sec_bounds = _get_secondary_monitor_bounds()
+        if sec_bounds:
+            sx, sy, sw, sh = sec_bounds
+            user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
+            user32.SetWindowPos(target_hwnd, 0, sx, sy, sw - 10, sh - 10, 0x0040)
+            user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
+        else:
+            user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
+
+        # 3. Bring to foreground
+        user32.SetForegroundWindow(target_hwnd)
+
+        is_vis = bool(user32.IsWindowVisible(target_hwnd))
+        is_icon = bool(user32.IsIconic(target_hwnd))
+        status = "Visible y Activo" if (is_vis and not is_icon) else "Restaurado"
+        mon_label = "DISPLAY2 (Secundaria)" if sec_bounds else "Pantalla principal"
+        print(f"🌐 [Google Chrome] Pestaña abierta y maximizada en {mon_label} ({status}).", flush=True)
+
+    except Exception as e:
+        pass
+
+
+def open_and_maximize_in_chrome(url: str) -> None:
+    """Open URL in Google Chrome, un-minimize, move to secondary monitor, and maximize."""
+    chrome_path = _find_chrome_path()
+    if chrome_path:
+        try:
+            # Launch or open new tab in Chrome
+            subprocess.Popen([chrome_path, url], shell=False)
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                ex.submit(_bring_chrome_to_front_worker)
+            return
+        except Exception:
+            pass
+
+    # Fallback to default browser
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
 def create_html_report(
     title: str,
     html_body: str,
@@ -155,7 +301,7 @@ def create_html_report(
     auto_open: bool = True,
     opener: Optional[Callable[[str], Any]] = None,
 ) -> Path:
-    """Generate a styled HTML report and optionally open it in the default browser."""
+    """Generate a styled HTML report and open it maximized in Google Chrome."""
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -175,7 +321,7 @@ def create_html_report(
         f.write(full_html)
 
     if auto_open:
-        open_func = opener or webbrowser.open
+        open_func = opener or open_and_maximize_in_chrome
         try:
             open_func(str(file_path.resolve().as_uri()))
         except Exception:

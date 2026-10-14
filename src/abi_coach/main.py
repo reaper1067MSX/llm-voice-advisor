@@ -303,10 +303,34 @@ def run_interactive_loop(config) -> None:
         cleanup_and_exit()
 
 
+def cmd_list_voices() -> None:
+    """Print the curated catalogue of natural female voices."""
+    print("\n" + "=" * 70, flush=True)
+    print("      🎙️ CATÁLOGO DE VOCES FEMENINAS NATURALES (EDGE-TTS)", flush=True)
+    print("=" * 70, flush=True)
+    voices = [
+        ("es-CO-SalomeNeural", "Salomé (Colombia)", "Cálida, dulce, muy humana y fluida (⭐ Recomendada)"),
+        ("es-ES-ElviraNeural", "Elvira (España)", "Expresiva, natural, clara y con excelente prosodia"),
+        ("es-ES-XimenaNeural", "Ximena (España)", "Joven, moderna, enérgica y dinámica"),
+        ("es-PE-CamilaNeural", "Camila (Perú)", "Suave, pausada, amigable y muy clara"),
+        ("es-US-PalomaNeural", "Paloma (EE.UU. / Neutro)", "Neutra, ágil y conversacional"),
+        ("es-MX-DaliaNeural", "Dalia (México)", "Profesional, directa y formal"),
+        ("es-AR-ElenaNeural", "Elena (Argentina)", "Natural, con cadencia rítmica argentina"),
+        ("es-CL-CatalinaNeural", "Catalina (Chile)", "Natural y conversacional"),
+    ]
+    for vid, name, desc in voices:
+        print(f"  • {vid:<22} | {name:<22} | {desc}", flush=True)
+    print("=" * 70, flush=True)
+    print("Para probar una voz: uv run python -m abi_coach.main --test-tts \"Hola soy tu coach\" --voice <id>", flush=True)
+    print("Para usarla fijamente: cámbiala en el archivo config.yaml\n", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ABI Voice Coach - Copiloto Táctico para Arena Breakout Infinite")
     parser.add_argument("--config", type=str, default=None, help="Ruta al archivo config.yaml")
     parser.add_argument("--list-models", action="store_true", help="Listar modelos disponibles en Google AI Studio")
+    parser.add_argument("--list-voices", action="store_true", help="Listar catálogo de voces femeninas naturales")
+    parser.add_argument("--voice", type=str, default=None, help="Voz temporal para probar con --test-tts")
     parser.add_argument("--test-capture", action="store_true", help="Probar captura de pantalla a nivel de SO")
     parser.add_argument("--test-tts", type=str, default=None, help="Probar motor de voz con el texto indicado")
     parser.add_argument("--test-mic", action="store_true", help="Probar micrófono y transcripción local Whisper")
@@ -315,8 +339,13 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config)
 
+    if args.voice:
+        cfg.speaker.voice = args.voice
+
     if args.list_models:
         cmd_list_models(cfg)
+    elif args.list_voices:
+        cmd_list_voices()
     elif args.test_capture:
         cmd_test_capture(cfg)
     elif args.test_tts is not None:

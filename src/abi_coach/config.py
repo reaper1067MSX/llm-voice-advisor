@@ -55,9 +55,10 @@ class ListenerConfig:
 @dataclass
 class SpeakerConfig:
     engine: str = "edge-tts"
-    voice: str = "es-MX-DaliaNeural"
-    rate: str = "+5%"
+    voice: str = "es-CO-SalomeNeural"
+    rate: str = "+0%"
     volume: str = "+0%"
+    pitch: str = "+0Hz"
 
 
 @dataclass
@@ -147,9 +148,10 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     spk_raw = raw.get("speaker", {})
     spk_cfg = SpeakerConfig(
         engine=str(spk_raw.get("engine", "edge-tts")),
-        voice=str(spk_raw.get("voice", "es-MX-DaliaNeural")),
-        rate=str(spk_raw.get("rate", "+5%")),
+        voice=str(spk_raw.get("voice", "es-CO-SalomeNeural")),
+        rate=str(spk_raw.get("rate", "+0%")),
         volume=str(spk_raw.get("volume", "+0%")),
+        pitch=str(spk_raw.get("pitch", "+0Hz")),
     )
 
     rep_raw = raw.get("reports", {})

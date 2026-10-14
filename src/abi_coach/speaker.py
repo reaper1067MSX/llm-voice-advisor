@@ -52,6 +52,7 @@ class Speaker:
             voice=self.config.voice,
             rate=self.config.rate,
             volume=self.config.volume,
+            pitch=getattr(self.config, "pitch", "+0Hz"),
         )
         audio_chunks = []
         async for chunk in comm.stream():
