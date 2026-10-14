@@ -76,8 +76,14 @@ speaker:
 
 reports:
   output_dir: "reports"
-  # Abrir automáticamente el navegador con la tabla/gráfica
+  # Abrir automáticamente el navegador con la tabla/gráfica interactiva
   auto_open_browser: true
+  # Navegador preferido para visualizar reportes en DISPLAY2:
+  #   "firefox" -> Mozilla Firefox (Recomendado: ultraligero, sin extensiones pesadas, rápido)
+  #   "edge"    -> Microsoft Edge (Nativo de Windows 11)
+  #   "chrome"  -> Google Chrome
+  preferred_browser: "firefox"
+
 
 history:
   # Cantidad máxima de turnos anteriores en memoria de texto

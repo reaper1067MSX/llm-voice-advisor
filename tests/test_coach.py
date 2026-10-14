@@ -95,9 +95,18 @@ def test_downscale_aspect_ratio_preservation():
 
 def test_find_browser_order():
     from abi_coach.reports import _find_browser
-    b_type, b_path = _find_browser()
+    # Default / Firefox preference
+    b_type, b_path = _find_browser(preferred="firefox")
     assert b_type in ("firefox", "edge", "chrome", "default")
     if b_type != "default":
         assert b_path is not None
         assert Path(b_path).exists()
+
+    # Edge preference
+    b_type_edge, b_path_edge = _find_browser(preferred="edge")
+    assert b_type_edge in ("firefox", "edge", "chrome", "default")
+    if b_type_edge != "default":
+        assert b_path_edge is not None
+        assert Path(b_path_edge).exists()
+
 

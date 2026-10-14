@@ -130,9 +130,11 @@ class Brain:
                 output_dir=self.config.reports.output_dir,
                 auto_open=self.config.reports.auto_open_browser,
                 opener=self.report_opener,
+                preferred_browser=self.config.reports.preferred_browser,
             )
             generated_report_path = str(path)
             return f"Informe HTML creado exitosamente en {path} y mostrado en pantalla."
+
 
         contents: List[Any] = []
 

@@ -160,56 +160,69 @@ from typing import Any, Callable, List, Optional, Tuple
 import webbrowser
 
 
-def _find_browser() -> Tuple[str, Optional[str]]:
-    """Locate preferred browser executable on Windows.
+def _find_browser(preferred: str = "firefox") -> Tuple[str, Optional[str]]:
+    """Locate browser executable on Windows based on user preference with smart fallback.
     
-    Priority:
-    1. Mozilla Firefox (lightweight, minimal plugins, reliable display)
-    2. Microsoft Edge (Windows 11 native fallback)
-    3. Google Chrome (tertiary fallback)
+    Order for "firefox": Firefox -> Edge -> Chrome
+    Order for "edge": Edge -> Firefox -> Chrome
+    Order for "chrome": Chrome -> Firefox -> Edge
     """
-    # 1. Firefox
-    ff_cmd = shutil.which("firefox") or shutil.which("firefox.exe")
-    if ff_cmd and os.path.isfile(ff_cmd):
-        return ("firefox", ff_cmd)
-    
-    ff_candidates = [
-        os.path.expandvars(r"%LocalAppData%\Microsoft\WindowsApps\firefox.exe"),
-        os.path.expandvars(r"%ProgramFiles%\Mozilla Firefox\firefox.exe"),
-        os.path.expandvars(r"%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"),
-    ]
-    for c in ff_candidates:
-        if os.path.isfile(c):
-            return ("firefox", c)
+    def check_firefox() -> Optional[str]:
+        ff_cmd = shutil.which("firefox") or shutil.which("firefox.exe")
+        if ff_cmd and os.path.isfile(ff_cmd):
+            return ff_cmd
+        candidates = [
+            os.path.expandvars(r"%LocalAppData%\Microsoft\WindowsApps\firefox.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Mozilla Firefox\firefox.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                return c
+        return None
 
-    # 2. Microsoft Edge
-    edge_cmd = shutil.which("msedge") or shutil.which("msedge.exe")
-    if edge_cmd and os.path.isfile(edge_cmd):
-        return ("edge", edge_cmd)
+    def check_edge() -> Optional[str]:
+        edge_cmd = shutil.which("msedge") or shutil.which("msedge.exe")
+        if edge_cmd and os.path.isfile(edge_cmd):
+            return edge_cmd
+        candidates = [
+            os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                return c
+        return None
 
-    edge_candidates = [
-        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
-        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
-    ]
-    for c in edge_candidates:
-        if os.path.isfile(c):
-            return ("edge", c)
+    def check_chrome() -> Optional[str]:
+        chrome_cmd = shutil.which("chrome") or shutil.which("chrome.exe")
+        if chrome_cmd and os.path.isfile(chrome_cmd):
+            return chrome_cmd
+        candidates = [
+            os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                return c
+        return None
 
-    # 3. Google Chrome
-    chrome_cmd = shutil.which("chrome") or shutil.which("chrome.exe")
-    if chrome_cmd and os.path.isfile(chrome_cmd):
-        return ("chrome", chrome_cmd)
+    pref = preferred.lower().strip()
+    if pref == "edge":
+        order = [("edge", check_edge), ("firefox", check_firefox), ("chrome", check_chrome)]
+    elif pref == "chrome":
+        order = [("chrome", check_chrome), ("firefox", check_firefox), ("edge", check_edge)]
+    else:  # default "firefox"
+        order = [("firefox", check_firefox), ("edge", check_edge), ("chrome", check_chrome)]
 
-    chrome_candidates = [
-        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
-        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
-        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
-    ]
-    for c in chrome_candidates:
-        if os.path.isfile(c):
-            return ("chrome", c)
+    for b_type, check_fn in order:
+        path = check_fn()
+        if path:
+            return (b_type, path)
 
     return ("default", None)
+
 
 
 def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
@@ -386,9 +399,9 @@ def _bring_browser_to_front_worker(browser_type: str, title_query: str = "") -> 
         pass
 
 
-def open_and_maximize_in_browser(file_path: str, title: str = "") -> None:
+def open_and_maximize_in_browser(file_path: str, title: str = "", preferred: str = "firefox") -> None:
     """Open file in preferred browser (Firefox > Edge > Chrome), position and maximize on secondary monitor."""
-    browser_type, browser_path = _find_browser()
+    browser_type, browser_path = _find_browser(preferred=preferred)
 
     if browser_path:
         try:
@@ -431,6 +444,7 @@ def create_html_report(
     output_dir: str = "reports",
     auto_open: bool = True,
     opener: Optional[Callable[[str], Any]] = None,
+    preferred_browser: str = "firefox",
 ) -> Path:
     """Generate a styled HTML report and open it maximized in the preferred browser."""
     import unicodedata
@@ -462,6 +476,7 @@ def create_html_report(
             except Exception:
                 pass
         else:
-            open_and_maximize_in_browser(resolved_str, title=title)
+            open_and_maximize_in_browser(resolved_str, title=title, preferred=preferred_browser)
 
     return file_path
+
