@@ -129,6 +129,13 @@ def cmd_ask(config, prompt: str) -> None:
     print("✅ Respuesta finalizada.", flush=True)
 
 
+import atexit
+import ctypes
+import signal
+import threading
+import sounddevice as sd
+
+
 def run_interactive_loop(config) -> None:
     """Start the main event-driven Push-to-Talk coach loop."""
     print(
@@ -147,20 +154,72 @@ def run_interactive_loop(config) -> None:
     listener.init_whisper()
     brain = Brain(config)
 
+    # Setup 100% clean teardown on exit, Ctrl+C, or window close
+    is_shutting_down = False
+
+    def cleanup_and_exit(signum=None, frame=None):
+        nonlocal is_shutting_down
+        if is_shutting_down:
+            return
+        is_shutting_down = True
+        print("\n🛑 Cerrando ABI Voice Coach y liberando recursos (audio, GPU, hilos)...", flush=True)
+        try:
+            speaker.stop()
+        except Exception:
+            pass
+        try:
+            listener.stop_ptt_loop()
+            listener.close()
+        except Exception:
+            pass
+        try:
+            sd.stop()
+        except Exception:
+            pass
+        print("✅ Todo cerrado limpiamente. ¡Hasta la próxima raid!\n", flush=True)
+        # os._exit immediately terminates all threads, bypasses any hung C-extensions,
+        # and guarantees zero orphan python.exe processes remain in Task Manager.
+        os._exit(0)
+
+    # Register standard signals
+    signal.signal(signal.SIGINT, cleanup_and_exit)
+    signal.signal(signal.SIGTERM, cleanup_and_exit)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, cleanup_and_exit)
+    atexit.register(cleanup_and_exit)
+
+    # Register Windows console close handler (handles clicking the 'X' button on console window)
+    if sys.platform == "win32":
+        HandlerRoutine = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong)
+
+        def win_ctrl_handler(ctrl_type):
+            cleanup_and_exit()
+            return True
+
+        global_handler = HandlerRoutine(win_ctrl_handler)
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(global_handler, True)
+
     print("✅ Coach listo. Entra a tu partida y mantén presionado la tecla cuando necesites consejo.", flush=True)
-    print("Presiona Ctrl+C en esta consola para salir.\n", flush=True)
+    print("   • Sonido 'bip' agudo: grabando audio y capturando pantalla.")
+    print("   • Sonido 'bip' grave: procesando con Whisper GPU y Gemini.")
+    print("Presiona Ctrl+C o cierra la ventana para salir.\n", flush=True)
 
     latest_capture = None
 
     def on_press():
         nonlocal latest_capture
         speaker.stop()
-        # Immediate screen capture right when the key is pressed
-        try:
-            latest_capture = capture_screen(config.capture)
-        except Exception as e:
-            print(f"⚠️ Error al capturar pantalla: {e}", flush=True)
-            latest_capture = None
+        # Capture screen in background worker thread so it never blocks audio recording or PTT polling
+        def do_capture():
+            nonlocal latest_capture
+            try:
+                latest_capture = capture_screen(config.capture)
+            except Exception as e:
+                print(f"\n⚠️ Error al capturar pantalla: {e}", flush=True)
+                latest_capture = None
+
+        t = threading.Thread(target=do_capture, daemon=True)
+        t.start()
         print("🎙️ [PTT Activo] Escuchando...", end="\r", flush=True)
 
     def on_release(transcript: str):
@@ -197,7 +256,7 @@ def run_interactive_loop(config) -> None:
     try:
         listener.listen_ptt_loop(on_press, on_release)
     except KeyboardInterrupt:
-        print("\n👋 Sesión de coaching finalizada. ¡Buena suerte en tus raids!")
+        cleanup_and_exit()
 
 
 def main() -> None:

@@ -5,6 +5,7 @@ listen-only via pynput on other OS, strictly no key injection)
 and faster-whisper running on NVIDIA CUDA (RTX 4070 Ti) with CPU fallback.
 """
 
+import collections
 import ctypes
 import os
 import queue
@@ -23,8 +24,24 @@ VK_MAP = {
     "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
     "scroll_lock": 0x91, "pause": 0x13,
     "x1": 0x05, "x2": 0x06,
-    "v": 0x56, "t": 0x54, "caps_lock": 0x14,
+    "v": 0x56, "t": 0x54, "c": 0x43, "x": 0x58, "z": 0x5A,
+    "caps_lock": 0x14,
 }
+
+
+def play_beep(freq: int, duration_ms: int) -> None:
+    """Non-blocking Windows system beep for instant auditory feedback."""
+    if os.name == "nt":
+        try:
+            import winsound
+            t = threading.Thread(
+                target=winsound.Beep,
+                args=(freq, duration_ms),
+                daemon=True,
+            )
+            t.start()
+        except Exception:
+            pass
 
 
 def _setup_cuda_dlls() -> None:
@@ -51,6 +68,9 @@ class AudioListener:
         self._stream: Optional[sd.InputStream] = None
         self._whisper: Optional[WhisperModel] = None
         self._press_start_time = 0.0
+        self._running = False
+        # Pre-buffer keeps the last ~0.25 seconds of audio so initial words are never clipped
+        self._pre_buffer = collections.deque(maxlen=4)
 
     def init_whisper(self) -> WhisperModel:
         """Initialize local faster-whisper model on GPU with fallback to CPU."""
@@ -78,23 +98,37 @@ class AudioListener:
         return self._whisper
 
     def _audio_callback(self, indata, frames, time_info, status):
-        """Accumulate incoming audio blocks into the buffer."""
-        if self._is_recording:
-            self._recorded_chunks.append(indata.copy())
+        """Warm stream callback: keeps pre-buffer and records when active."""
+        chunk = indata.copy()
+        with self._recording_lock:
+            if self._is_recording:
+                self._recorded_chunks.append(chunk)
+            else:
+                self._pre_buffer.append(chunk)
+
+    def start_stream(self) -> None:
+        """Open and keep active a persistent warm InputStream to eliminate lag on keypress."""
+        if self._stream is None:
+            try:
+                self._stream = sd.InputStream(
+                    samplerate=self.config.sample_rate,
+                    channels=1,
+                    dtype="float32",
+                    callback=self._audio_callback,
+                )
+                self._stream.start()
+            except Exception as e:
+                print(f"⚠️ Aviso al iniciar InputStream de micrófono: {e}")
 
     def start_recording(self) -> None:
-        """Start microphone capture."""
+        """Start recording speech into the active buffer with pre-buffer prepend."""
         with self._recording_lock:
-            self._recorded_chunks = []
+            # Ensure warm stream is running
+            if self._stream is None or not self._stream.active:
+                self.start_stream()
+            self._recorded_chunks = list(self._pre_buffer)
             self._is_recording = True
             self._press_start_time = time.perf_counter()
-            self._stream = sd.InputStream(
-                samplerate=self.config.sample_rate,
-                channels=1,
-                dtype="float32",
-                callback=self._audio_callback,
-            )
-            self._stream.start()
 
     def stop_recording_and_transcribe(self) -> Optional[str]:
         """Stop capture, validate minimum duration, and run transcription."""
@@ -103,13 +137,6 @@ class AudioListener:
                 return None
             self._is_recording = False
             duration = time.perf_counter() - self._press_start_time
-            if self._stream is not None:
-                try:
-                    self._stream.stop()
-                    self._stream.close()
-                except Exception:
-                    pass
-                self._stream = None
 
             if duration < self.config.min_duration_sec or not self._recorded_chunks:
                 return None
@@ -127,12 +154,32 @@ class AudioListener:
         transcript = " ".join(seg.text.strip() for seg in segments).strip()
         return transcript if transcript else None
 
+    def close(self) -> None:
+        """Close audio streams and release hardware resources cleanly."""
+        self._running = False
+        with self._recording_lock:
+            self._is_recording = False
+            if self._stream is not None:
+                try:
+                    self._stream.stop()
+                    self._stream.close()
+                except Exception:
+                    pass
+                self._stream = None
+
+    def stop_ptt_loop(self) -> None:
+        """Signal the PTT polling loop to terminate."""
+        self._running = False
+
     def listen_ptt_loop(
         self,
         on_press_callback: Callable[[], None],
         on_release_callback: Callable[[str], None],
     ) -> None:
         """Listen for global push-to-talk hotkey events using GetAsyncKeyState on Windows."""
+        self._running = True
+        self.start_stream()
+
         if os.name == "nt":
             user32 = ctypes.windll.user32
             try:
@@ -150,13 +197,15 @@ class AudioListener:
 
             was_down = False
 
-            while True:
+            while self._running:
                 is_key_down = bool(user32.GetAsyncKeyState(target_vk) & 0x8000)
                 is_mouse_down = bool(check_mouse and (user32.GetAsyncKeyState(mouse_vk) & 0x8000))
                 is_down = is_key_down or is_mouse_down
 
                 if is_down and not was_down:
                     was_down = True
+                    # Auditory cue: high pitch beep indicates recording started
+                    play_beep(1200, 50)
                     try:
                         on_press_callback()
                     except Exception:
@@ -165,11 +214,22 @@ class AudioListener:
 
                 elif not is_down and was_down:
                     was_down = False
+                    # Auditory cue: lower pitch beep indicates recording stopped
+                    play_beep(800, 50)
+                    press_duration = time.perf_counter() - self._press_start_time
                     transcript = self.stop_recording_and_transcribe()
+
                     if transcript:
                         on_release_callback(transcript)
+                    elif press_duration < self.config.min_duration_sec:
+                        play_beep(400, 100)
+                        print(
+                            f"\n⚠️ Pulsación muy rápida ({press_duration:.2f}s). "
+                            f"Mantén presionado [{target_key_name.upper()}] mientras hablas y suéltalo al terminar.",
+                            flush=True,
+                        )
 
-                time.sleep(0.02)  # 20ms polling interval = 50 checks/sec, ~0% CPU
+                time.sleep(0.015)  # 15ms polling = ~66 checks/sec, ~0% CPU
 
         else:
             # Fallback for non-Windows systems via pynput
