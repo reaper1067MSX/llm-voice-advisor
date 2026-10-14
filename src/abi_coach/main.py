@@ -96,12 +96,12 @@ def cmd_test_mic(config) -> None:
 
 def cmd_ask(config, prompt: str) -> None:
     """Ask a question using text prompt + live screen capture without microphone."""
-    print(f"💬 Pregunta: \"{prompt}\"")
-    print("📸 Capturando pantalla...")
+    print(f"💬 Pregunta: \"{prompt}\"", flush=True)
+    print("📸 Capturando pantalla...", flush=True)
     capture_res = capture_screen(config.capture)
-    print(f"  • Captura lista en {capture_res.total_time_ms:.1f} ms ({len(capture_res.full_image_bytes) / 1024:.1f} KB)")
+    print(f"  • Captura lista en {capture_res.total_time_ms:.1f} ms ({len(capture_res.full_image_bytes) / 1024:.1f} KB)", flush=True)
 
-    print("🧠 Consultando con Gemini Flash...")
+    print(f"🧠 Consultando con {config.gemini.model}...", flush=True)
     brain = Brain(config)
     speaker = Speaker(config.speaker)
 
@@ -111,10 +111,10 @@ def cmd_ask(config, prompt: str) -> None:
         crop_bytes=capture_res.crop_bytes,
     )
 
-    print("\n🎯 Respuesta del Coach:")
-    print(f"{resp.spoken_text}\n")
+    print("\n🎯 Respuesta del Coach:", flush=True)
+    print(f"{resp.spoken_text}\n", flush=True)
     if resp.report_path:
-        print(f"📊 Informe HTML abierto en navegador: {resp.report_path}")
+        print(f"📊 Informe HTML abierto en navegador: {resp.report_path}", flush=True)
 
     tokens_info = []
     if resp.input_tokens:
@@ -122,9 +122,11 @@ def cmd_ask(config, prompt: str) -> None:
     if resp.output_tokens:
         tokens_info.append(f"Respuesta: {resp.output_tokens} tok")
     tok_str = " | ".join(tokens_info) if tokens_info else "N/A"
-    print(f"⏱️ Latencia: {resp.latency_ms:.1f} ms | Tokens: {tok_str}")
+    print(f"⏱️ Latencia: {resp.latency_ms:.1f} ms | Tokens: {tok_str}", flush=True)
 
+    print("🔊 Reproduciendo respuesta por voz...", flush=True)
     speaker.speak(resp.spoken_text)
+    print("✅ Respuesta finalizada.", flush=True)
 
 
 def run_interactive_loop(config) -> None:
@@ -135,17 +137,18 @@ def run_interactive_loop(config) -> None:
             gpu=f"{config.listener.whisper_device.upper()} ({config.listener.whisper_compute_type})",
             voice=config.speaker.voice,
             model=config.gemini.model,
-        )
+        ),
+        flush=True,
     )
 
-    print("🚀 Inicializando componentes...")
+    print("🚀 Inicializando componentes...", flush=True)
     speaker = Speaker(config.speaker)
     listener = AudioListener(config.listener)
     listener.init_whisper()
     brain = Brain(config)
 
-    print("✅ Coach listo. Entra a tu partida y mantén presionado la tecla cuando necesites consejo.")
-    print("Presiona Ctrl+C en esta consola para salir.\n")
+    print("✅ Coach listo. Entra a tu partida y mantén presionado la tecla cuando necesites consejo.", flush=True)
+    print("Presiona Ctrl+C en esta consola para salir.\n", flush=True)
 
     latest_capture = None
 
@@ -156,17 +159,17 @@ def run_interactive_loop(config) -> None:
         try:
             latest_capture = capture_screen(config.capture)
         except Exception as e:
-            print(f"⚠️ Error al capturar pantalla: {e}")
+            print(f"⚠️ Error al capturar pantalla: {e}", flush=True)
             latest_capture = None
         print("🎙️ [PTT Activo] Escuchando...", end="\r", flush=True)
 
     def on_release(transcript: str):
         nonlocal latest_capture
-        print(f"\n🗣️ Tú: \"{transcript}\"")
+        print(f"\n🗣️ Tú: \"{transcript}\"", flush=True)
         cap = latest_capture
         latest_capture = None
 
-        print("🧠 Coach analizando la situación...")
+        print("🧠 Coach analizando la situación...", flush=True)
         try:
             resp = brain.ask(
                 prompt=transcript,
@@ -174,9 +177,9 @@ def run_interactive_loop(config) -> None:
                 crop_bytes=cap.crop_bytes if cap else None,
             )
 
-            print(f"\n🎯 Coach: {resp.spoken_text}")
+            print(f"\n🎯 Coach: {resp.spoken_text}", flush=True)
             if resp.report_path:
-                print(f"📊 Tabla/Gráfico abierta en navegador: {resp.report_path}")
+                print(f"📊 Tabla/Gráfico abierta en navegador: {resp.report_path}", flush=True)
 
             tokens_info = []
             if resp.input_tokens:
@@ -184,12 +187,12 @@ def run_interactive_loop(config) -> None:
             if resp.output_tokens:
                 tokens_info.append(f"Output: {resp.output_tokens} tok")
             tok_str = " | ".join(tokens_info) if tokens_info else "Tokens N/A"
-            print(f"⏱️ Latencia IA: {resp.latency_ms:.1f} ms | {tok_str}\n")
+            print(f"⏱️ Latencia IA: {resp.latency_ms:.1f} ms | {tok_str}\n", flush=True)
 
             speaker.speak(resp.spoken_text)
 
         except Exception as e:
-            print(f"❌ Error al procesar respuesta con la IA: {e}")
+            print(f"❌ Error al procesar respuesta con la IA: {e}", flush=True)
 
     try:
         listener.listen_ptt_loop(on_press, on_release)

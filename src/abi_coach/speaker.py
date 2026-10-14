@@ -96,12 +96,18 @@ class Speaker:
             if decoded.nchannels > 1:
                 audio_array = audio_array.reshape(-1, decoded.nchannels)
 
+            # Calculate duration in seconds
+            total_frames = len(audio_array) if decoded.nchannels == 1 else len(audio_array)
+            duration_sec = total_frames / decoded.sample_rate
+
             with self._playback_lock:
                 self._is_playing = True
                 sd.play(audio_array, samplerate=decoded.sample_rate)
 
-            # Wait for audio to finish playing or until stopped
-            while sd.get_stream() and sd.get_stream().active and self._is_playing:
+            # Wait for audio to finish playing or until interrupted
+            import time
+            end_time = time.perf_counter() + duration_sec
+            while time.perf_counter() < end_time and self._is_playing:
                 await asyncio.sleep(0.05)
 
         except Exception as e:

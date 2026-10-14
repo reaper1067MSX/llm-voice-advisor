@@ -10,7 +10,7 @@ import yaml
 
 @dataclass
 class GeminiConfig:
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-3.1-flash-lite-preview"
     media_resolution: str = "high"
     temperature: float = 0.3
     api_key: Optional[str] = None

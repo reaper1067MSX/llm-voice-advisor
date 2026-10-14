@@ -126,16 +126,15 @@ class Brain:
         gen_config = types.GenerateContentConfig(
             system_instruction=COACH_SYSTEM_INSTRUCTION,
             temperature=self.config.gemini.temperature,
-            media_resolution=self._get_media_resolution(),
             tools=[create_report_tool],
         )
 
-        response = self.client.models.generate_content(
+        chat = self.client.chats.create(
             model=self.config.gemini.model,
-            contents=contents,
             config=gen_config,
         )
 
+        response = chat.send_message(contents)
         spoken_text = response.text or ""
 
         # Update history

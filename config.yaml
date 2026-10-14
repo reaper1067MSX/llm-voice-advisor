@@ -3,8 +3,8 @@
 # ==========================================
 
 gemini:
-  # Modelo recomendado para visión y análisis rápido con tokens mínimos
-  model: "gemini-2.5-flash"
+  # Modelo ultra rápido para visión y análisis con cero saturación
+  model: "gemini-3.1-flash-lite-preview"
   # Opciones: high, medium, low (en Gemini 3 / 2.5 regula la resolución interna de imagen)
   media_resolution: "high"
   temperature: 0.3
