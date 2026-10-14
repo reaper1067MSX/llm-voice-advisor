@@ -148,11 +148,16 @@ def run_interactive_loop(config) -> None:
         flush=True,
     )
 
-    print("🚀 Inicializando componentes...", flush=True)
+    print("🚀 Inicializando componentes del Coach...", flush=True)
+    print(f"  [1/4] 🔊 Configurando motor de voz TTS ({config.speaker.voice})...", flush=True)
     speaker = Speaker(config.speaker)
+    print(f"  [2/4] 🎙️ Cargando faster-whisper ({config.listener.whisper_model}) en GPU ({config.listener.whisper_device.upper()})...", flush=True)
     listener = AudioListener(config.listener)
     listener.init_whisper()
+    print(f"  [3/4] 🧠 Conectando con Gemini Vision ({config.gemini.model})...", flush=True)
     brain = Brain(config)
+    print("  [4/4] 🎧 Abriendo stream de micrófono y búfer circular (16 kHz)...", flush=True)
+    listener.start_stream()
 
     # Setup 100% clean teardown on exit, Ctrl+C, or window close
     is_shutting_down = False
@@ -199,10 +204,14 @@ def run_interactive_loop(config) -> None:
         global_handler = HandlerRoutine(win_ctrl_handler)
         ctypes.windll.kernel32.SetConsoleCtrlHandler(global_handler, True)
 
-    print("✅ Coach listo. Entra a tu partida y mantén presionado la tecla cuando necesites consejo.", flush=True)
-    print("   • Sonido 'bip' agudo: grabando audio y capturando pantalla.")
-    print("   • Sonido 'bip' grave: procesando con Whisper GPU y Gemini.")
-    print("Presiona Ctrl+C o cierra la ventana para salir.\n", flush=True)
+    target_key = config.listener.ptt_key.upper()
+    print("\n" + "=" * 66, flush=True)
+    print("✅ ¡ABI Voice Coach listo para el combate!", flush=True)
+    print(f"👉 Mantén presionado [{target_key}] mientras hablas y suéltalo al terminar.", flush=True)
+    print("   • Al presionar: bip agudo + captura de pantalla + grabación.")
+    print("   • Al soltar: bip grave + transcripción Whisper + análisis Gemini + respuesta por voz.")
+    print("   • Para salir: Presiona Ctrl+C o cierra la ventana (liberación total de memoria).", flush=True)
+    print("=" * 66 + "\n", flush=True)
 
     latest_capture = None
 
@@ -220,15 +229,15 @@ def run_interactive_loop(config) -> None:
 
         t = threading.Thread(target=do_capture, daemon=True)
         t.start()
-        print("🎙️ [PTT Activo] Escuchando...", end="\r", flush=True)
 
     def on_release(transcript: str):
         nonlocal latest_capture
-        print(f"\n🗣️ Tú: \"{transcript}\"", flush=True)
+        now_str = time.strftime("%H:%M:%S")
+        print(f"[{now_str}] 🗣️ Tú dijiste: \"{transcript}\"", flush=True)
         cap = latest_capture
         latest_capture = None
 
-        print("🧠 Coach analizando la situación...", flush=True)
+        print(f"[{now_str}] 🧠 Coach analizando la situación y tu pantalla...", flush=True)
         try:
             resp = brain.ask(
                 prompt=transcript,
@@ -236,22 +245,19 @@ def run_interactive_loop(config) -> None:
                 crop_bytes=cap.crop_bytes if cap else None,
             )
 
-            print(f"\n🎯 Coach: {resp.spoken_text}", flush=True)
+            now_resp = time.strftime("%H:%M:%S")
+            print(f"\n[{now_resp}] 🎯 Coach ({resp.latency_ms:.0f} ms):", flush=True)
+            print(f"   \"{resp.spoken_text}\"\n", flush=True)
             if resp.report_path:
-                print(f"📊 Tabla/Gráfico abierta en navegador: {resp.report_path}", flush=True)
+                print(f"📊 Tabla/Gráfico interactiva abierta en pantalla secundaria: {resp.report_path}", flush=True)
 
-            tokens_info = []
-            if resp.input_tokens:
-                tokens_info.append(f"Input: {resp.input_tokens} tok")
-            if resp.output_tokens:
-                tokens_info.append(f"Output: {resp.output_tokens} tok")
-            tok_str = " | ".join(tokens_info) if tokens_info else "Tokens N/A"
-            print(f"⏱️ Latencia IA: {resp.latency_ms:.1f} ms | {tok_str}\n", flush=True)
-
+            print(f"[{now_resp}] 🔊 Reproduciendo consejo por voz en tus auriculares...", flush=True)
             speaker.speak(resp.spoken_text)
+            print(f"[{time.strftime('%H:%M:%S')}] 🎧 Listo. Mantén presionado [{target_key}] para tu siguiente consulta.\n", flush=True)
 
         except Exception as e:
             print(f"❌ Error al procesar respuesta con la IA: {e}", flush=True)
+            print(f"🎧 Listo. Mantén presionado [{target_key}] para volver a intentar.\n", flush=True)
 
     try:
         listener.listen_ptt_loop(on_press, on_release)

@@ -204,6 +204,8 @@ class AudioListener:
 
                 if is_down and not was_down:
                     was_down = True
+                    now_str = time.strftime("%H:%M:%S")
+                    print(f"\n[{now_str}] 🎙️ [{target_key_name.upper()} PRESIONADO] Grabando audio y capturando pantalla...", flush=True)
                     # Auditory cue: high pitch beep indicates recording started
                     play_beep(1200, 50)
                     try:
@@ -214,20 +216,30 @@ class AudioListener:
 
                 elif not is_down and was_down:
                     was_down = False
+                    press_duration = time.perf_counter() - self._press_start_time
+                    now_str = time.strftime("%H:%M:%S")
                     # Auditory cue: lower pitch beep indicates recording stopped
                     play_beep(800, 50)
-                    press_duration = time.perf_counter() - self._press_start_time
-                    transcript = self.stop_recording_and_transcribe()
 
-                    if transcript:
-                        on_release_callback(transcript)
-                    elif press_duration < self.config.min_duration_sec:
+                    if press_duration < self.config.min_duration_sec:
                         play_beep(400, 100)
                         print(
-                            f"\n⚠️ Pulsación muy rápida ({press_duration:.2f}s). "
+                            f"[{now_str}] ⚠️ Pulsación muy rápida ({press_duration:.2f}s). "
                             f"Mantén presionado [{target_key_name.upper()}] mientras hablas y suéltalo al terminar.",
                             flush=True,
                         )
+                        # Cancel capture and reset buffer
+                        with self._recording_lock:
+                            self._is_recording = False
+                            self._recorded_chunks = []
+                    else:
+                        print(f"[{now_str}] 🛑 [{target_key_name.upper()} SOLTADO] ({press_duration:.2f}s). Transcribiendo con Whisper GPU...", flush=True)
+                        transcript = self.stop_recording_and_transcribe()
+                        if transcript:
+                            on_release_callback(transcript)
+                        else:
+                            print(f"[{now_str}] ⚠️ No se detectó voz comprensible o el volumen fue muy bajo.", flush=True)
+                            print(f"[{now_str}] 🎧 Listo. Mantén presionado [{target_key_name.upper()}] para volver a preguntar.\n", flush=True)
 
                 time.sleep(0.015)  # 15ms polling = ~66 checks/sec, ~0% CPU
 
