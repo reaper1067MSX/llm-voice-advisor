@@ -37,11 +37,15 @@ class CaptureConfig:
 
 @dataclass
 class ListenerConfig:
+    mode: str = "continuous"  # "continuous" (manos libres VAD), "ptt", or "hybrid"
     ptt_key: str = "f9"
     mouse_button_enabled: bool = False
     mouse_button: str = "x2"
     sample_rate: int = 16000
     min_duration_sec: float = 0.4
+    silence_duration_sec: float = 1.0
+    vad_threshold: float = 0.012
+    wake_word: Optional[str] = None
     whisper_model: str = "large-v3-turbo"
     whisper_device: str = "cuda"
     whisper_compute_type: str = "float16"
@@ -125,11 +129,15 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
 
     lis_raw = raw.get("listener", {})
     lis_cfg = ListenerConfig(
+        mode=str(lis_raw.get("mode", "continuous")).lower(),
         ptt_key=str(lis_raw.get("ptt_key", "f9")).lower(),
         mouse_button_enabled=bool(lis_raw.get("mouse_button_enabled", False)),
         mouse_button=str(lis_raw.get("mouse_button", "x2")).lower(),
         sample_rate=int(lis_raw.get("sample_rate", 16000)),
         min_duration_sec=float(lis_raw.get("min_duration_sec", 0.4)),
+        silence_duration_sec=float(lis_raw.get("silence_duration_sec", 1.0)),
+        vad_threshold=float(lis_raw.get("vad_threshold", 0.012)),
+        wake_word=lis_raw.get("wake_word"),
         whisper_model=str(lis_raw.get("whisper_model", "large-v3-turbo")),
         whisper_device=str(lis_raw.get("whisper_device", "cuda")),
         whisper_compute_type=str(lis_raw.get("whisper_compute_type", "float16")),

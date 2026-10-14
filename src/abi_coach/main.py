@@ -205,13 +205,31 @@ def run_interactive_loop(config) -> None:
         ctypes.windll.kernel32.SetConsoleCtrlHandler(global_handler, True)
 
     target_key = config.listener.ptt_key.upper()
+    is_vad = config.listener.mode.lower() in ("continuous", "hybrid")
+    mode_title = "🎙️ MODO MANOS LIBRES ACTIVO (Detección de voz automática)" if is_vad else f"🔘 MODO PUSH-TO-TALK (Tecla [{target_key}])"
+
     print("\n" + "=" * 66, flush=True)
     print("✅ ¡ABI Voice Coach listo para el combate!", flush=True)
-    print(f"👉 Mantén presionado [{target_key}] mientras hablas y suéltalo al terminar.", flush=True)
-    print("   • Al presionar: bip agudo + captura de pantalla + grabación.")
-    print("   • Al soltar: bip grave + transcripción Whisper + análisis Gemini + respuesta por voz.")
+    print(f"   {mode_title}", flush=True)
+    if is_vad:
+        print("👉 Simplemente HABLA cuando quieras en tu micrófono (sin tocar teclas).")
+        print(f"   (También puedes usar [{target_key}] si prefieres pulsar).")
+    else:
+        print(f"👉 Mantén presionado [{target_key}] mientras hablas y suéltalo al terminar.")
+    print("   • Al detectar voz: bip agudo + captura de pantalla + grabación.")
+    print("   • Al callar: bip grave + transcripción GPU + análisis Gemini + respuesta por voz.")
     print("   • Para salir: Presiona Ctrl+C o cierra la ventana (liberación total de memoria).", flush=True)
     print("=" * 66 + "\n", flush=True)
+
+    # Vocal greeting to confirm sound output and indicate readiness
+    greeting = "Hola, soy tu coach táctico. Estoy listo y atento a tu partida. Hazme cualquier pregunta."
+    print("🔊 Saludando por voz en tus auriculares...", flush=True)
+    listener.pause_listening()
+    try:
+        speaker.speak(greeting)
+    finally:
+        listener.resume_listening()
+    print("🎧 Esperando tus preguntas...\n", flush=True)
 
     latest_capture = None
 
@@ -233,7 +251,7 @@ def run_interactive_loop(config) -> None:
     def on_release(transcript: str):
         nonlocal latest_capture
         now_str = time.strftime("%H:%M:%S")
-        print(f"[{now_str}] 🗣️ Tú dijiste: \"{transcript}\"", flush=True)
+        print(f"[{now_str}] 🗣️ Tú preguntaste: \"{transcript}\"", flush=True)
         cap = latest_capture
         latest_capture = None
 
@@ -252,12 +270,18 @@ def run_interactive_loop(config) -> None:
                 print(f"📊 Tabla/Gráfico interactiva abierta en pantalla secundaria: {resp.report_path}", flush=True)
 
             print(f"[{now_resp}] 🔊 Reproduciendo consejo por voz en tus auriculares...", flush=True)
-            speaker.speak(resp.spoken_text)
-            print(f"[{time.strftime('%H:%M:%S')}] 🎧 Listo. Mantén presionado [{target_key}] para tu siguiente consulta.\n", flush=True)
+            # Mute listener while speaking to prevent the coach from hearing itself
+            listener.pause_listening()
+            try:
+                speaker.speak(resp.spoken_text)
+            finally:
+                listener.resume_listening()
+
+            print(f"[{time.strftime('%H:%M:%S')}] 🎧 Listo. Esperando tu siguiente pregunta...\n", flush=True)
 
         except Exception as e:
             print(f"❌ Error al procesar respuesta con la IA: {e}", flush=True)
-            print(f"🎧 Listo. Mantén presionado [{target_key}] para volver a intentar.\n", flush=True)
+            print("🎧 Listo. Esperando tu siguiente pregunta...\n", flush=True)
 
     try:
         listener.listen_ptt_loop(on_press, on_release)

@@ -33,18 +33,29 @@ capture:
     #   height: 1050
 
 listener:
-  # Tecla para hablar (Push-to-Talk)
-  # Opciones comunes: f9, f8, f10, scroll_lock, pause
+  # Modo de escucha:
+  #   "continuous" = Manos libres (VAD): Habla naturalmente, detecta tu voz y responde sin tocar teclas.
+  #   "ptt" = Push-to-Talk exclusivo (mantener tecla para hablar).
+  #   "hybrid" = Escucha continua por voz y además responde a la tecla F9.
+  mode: "continuous"
+
+  # Tecla para Push-to-Talk (activa si usas modo ptt o hybrid)
   ptt_key: "f9"
-  # Soporte para botón lateral del ratón (x2 = botón adelante/navegador)
   mouse_button_enabled: false
   mouse_button: "x2"
+
   sample_rate: 16000
-  # Ignorar pulsaciones accidentales de menos de este tiempo
+  # Umbral de detección de voz (RMS): 0.010 a 0.020 (adecuado para Corsair Virtuoso)
+  vad_threshold: 0.012
+  # Segundos de silencio para considerar que terminaste de formular tu pregunta
+  silence_duration_sec: 1.0
+  # Duración mínima de voz (ignora carraspeos o ruidos < 0.4s)
   min_duration_sec: 0.4
-  # Modelo local Whisper (large-v3-turbo, medium, small)
+
+  # Palabra de activación opcional (déjalo comentado o vacío para que responda a cualquier pregunta directa)
+  # wake_word: "coach"
+
   whisper_model: "large-v3-turbo"
-  # Dispositivo: cuda (recomendado para tu RTX 4070 Ti) o cpu
   whisper_device: "cuda"
   whisper_compute_type: "float16"
   language: "es"
