@@ -1,0 +1,68 @@
+# ==========================================
+# ABI Coach - Archivo de Configuración
+# ==========================================
+
+gemini:
+  # Modelo recomendado para visión y análisis rápido con tokens mínimos
+  model: "gemini-2.5-flash"
+  # Opciones: high, medium, low (en Gemini 3 / 2.5 regula la resolución interna de imagen)
+  media_resolution: "high"
+  temperature: 0.3
+
+capture:
+  # Monitor del juego (1 = DISPLAY1 2560x1440 primario)
+  monitor_index: 1
+  # Resolución de salida para la captura completa (Lanczos downscale)
+  downscale_width: 1920
+  downscale_height: 1080
+  jpeg_quality: 85
+  # Guardar copia en disco de las capturas para depuración
+  save_captures: false
+  capture_dir: "captures"
+  # Regiones de interés a resolución nativa 1440p (opcional, recortadas sin pérdida)
+  regions:
+    # alijo:
+    #   x: 1420
+    #   y: 120
+    #   width: 1100
+    #   height: 1200
+    # mercado:
+    #   x: 350
+    #   y: 180
+    #   width: 1860
+    #   height: 1050
+
+listener:
+  # Tecla para hablar (Push-to-Talk)
+  # Opciones comunes: f9, f8, f10, scroll_lock, pause
+  ptt_key: "f9"
+  # Soporte para botón lateral del ratón (x2 = botón adelante/navegador)
+  mouse_button_enabled: false
+  mouse_button: "x2"
+  sample_rate: 16000
+  # Ignorar pulsaciones accidentales de menos de este tiempo
+  min_duration_sec: 0.4
+  # Modelo local Whisper (large-v3-turbo, medium, small)
+  whisper_model: "large-v3-turbo"
+  # Dispositivo: cuda (recomendado para tu RTX 4070 Ti) o cpu
+  whisper_device: "cuda"
+  whisper_compute_type: "float16"
+  language: "es"
+
+speaker:
+  engine: "edge-tts"
+  # Voz femenina en español de México (Dalia)
+  voice: "es-MX-DaliaNeural"
+  # Alternativa masculina si se desea cambiar:
+  # voice: "es-MX-JorgeNeural"
+  rate: "+5%"
+  volume: "+0%"
+
+reports:
+  output_dir: "reports"
+  # Abrir automáticamente el navegador con la tabla/gráfica
+  auto_open_browser: true
+
+history:
+  # Cantidad máxima de turnos anteriores en memoria de texto
+  max_turns: 5
