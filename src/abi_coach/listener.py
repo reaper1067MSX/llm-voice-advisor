@@ -1,9 +1,11 @@
 """Audio input and speech-to-text listener for ABI Coach.
 
-Uses global push-to-talk (listen-only via pynput, strictly no key injection)
+Uses global push-to-talk (GetAsyncKeyState on Windows for 100% reliable hardware polling,
+listen-only via pynput on other OS, strictly no key injection)
 and faster-whisper running on NVIDIA CUDA (RTX 4070 Ti) with CPU fallback.
 """
 
+import ctypes
 import os
 import queue
 import threading
@@ -11,10 +13,18 @@ import time
 from typing import Callable, Optional
 from faster_whisper import WhisperModel
 import numpy as np
-from pynput import keyboard, mouse
 import sounddevice as sd
 
 from abi_coach.config import ListenerConfig
+
+VK_MAP = {
+    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
+    "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
+    "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+    "scroll_lock": 0x91, "pause": 0x13,
+    "x1": 0x05, "x2": 0x06,
+    "v": 0x56, "t": 0x54, "caps_lock": 0x14,
+}
 
 
 def _setup_cuda_dlls() -> None:
@@ -122,54 +132,63 @@ class AudioListener:
         on_press_callback: Callable[[], None],
         on_release_callback: Callable[[str], None],
     ) -> None:
-        """Listen for global push-to-talk hotkey events."""
-        target_key = self.config.ptt_key.lower()
+        """Listen for global push-to-talk hotkey events using GetAsyncKeyState on Windows."""
+        if os.name == "nt":
+            target_key_name = self.config.ptt_key.lower()
+            target_vk = VK_MAP.get(target_key_name, 0x78)  # default F9 (0x78)
 
-        def parse_key(key) -> str:
-            if hasattr(key, "name") and key.name:
-                return key.name.lower()
-            if hasattr(key, "char") and key.char:
-                return key.char.lower()
-            return str(key).lower()
+            check_mouse = self.config.mouse_button_enabled
+            mouse_vk = VK_MAP.get(self.config.mouse_button.lower(), 0x06)  # default X2 (0x06)
 
-        def on_press(key):
-            k = parse_key(key)
-            if k == target_key and not self._is_recording:
-                # Trigger instant frame capture on press
-                try:
-                    on_press_callback()
-                except Exception:
-                    pass
-                self.start_recording()
+            user32 = ctypes.windll.user32
+            was_down = False
 
-        def on_release(key):
-            k = parse_key(key)
-            if k == target_key and self._is_recording:
-                transcript = self.stop_recording_and_transcribe()
-                if transcript:
-                    on_release_callback(transcript)
+            while True:
+                is_key_down = bool(user32.GetAsyncKeyState(target_vk) & 0x8000)
+                is_mouse_down = bool(check_mouse and (user32.GetAsyncKeyState(mouse_vk) & 0x8000))
+                is_down = is_key_down or is_mouse_down
 
-        # Setup mouse listener if enabled
-        mouse_listener: Optional[mouse.Listener] = None
-        if self.config.mouse_button_enabled:
-            target_btn = mouse.Button.x2 if self.config.mouse_button == "x2" else mouse.Button.x1
-
-            def on_click(x, y, button, pressed):
-                if button == target_btn:
-                    if pressed and not self._is_recording:
+                if is_down and not was_down:
+                    was_down = True
+                    try:
                         on_press_callback()
-                        self.start_recording()
-                    elif not pressed and self._is_recording:
-                        transcript = self.stop_recording_and_transcribe()
-                        if transcript:
-                            on_release_callback(transcript)
+                    except Exception:
+                        pass
+                    self.start_recording()
 
-            mouse_listener = mouse.Listener(on_click=on_click)
-            mouse_listener.start()
+                elif not is_down and was_down:
+                    was_down = False
+                    transcript = self.stop_recording_and_transcribe()
+                    if transcript:
+                        on_release_callback(transcript)
 
-        # Keyboard listener loop (blocking)
-        with keyboard.Listener(on_press=on_press, on_release=on_release) as k_listener:
-            k_listener.join()
+                time.sleep(0.02)  # 20ms polling interval = 50 checks/sec, ~0% CPU
 
-        if mouse_listener is not None:
-            mouse_listener.stop()
+        else:
+            # Fallback for non-Windows systems via pynput
+            from pynput import keyboard
+
+            target_key = self.config.ptt_key.lower()
+
+            def parse_key(key) -> str:
+                if hasattr(key, "name") and key.name:
+                    return key.name.lower()
+                if hasattr(key, "char") and key.char:
+                    return key.char.lower()
+                return str(key).lower()
+
+            def on_press(key):
+                k = parse_key(key)
+                if k == target_key and not self._is_recording:
+                    on_press_callback()
+                    self.start_recording()
+
+            def on_release(key):
+                k = parse_key(key)
+                if k == target_key and self._is_recording:
+                    transcript = self.stop_recording_and_transcribe()
+                    if transcript:
+                        on_release_callback(transcript)
+
+            with keyboard.Listener(on_press=on_press, on_release=on_release) as k_listener:
+                k_listener.join()
