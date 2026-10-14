@@ -134,13 +134,20 @@ class AudioListener:
     ) -> None:
         """Listen for global push-to-talk hotkey events using GetAsyncKeyState on Windows."""
         if os.name == "nt":
+            user32 = ctypes.windll.user32
+            try:
+                desk = user32.OpenInputDesktop(0, False, 0x01FF)
+                if desk:
+                    user32.SetThreadDesktop(desk)
+            except Exception:
+                pass
+
             target_key_name = self.config.ptt_key.lower()
             target_vk = VK_MAP.get(target_key_name, 0x78)  # default F9 (0x78)
 
             check_mouse = self.config.mouse_button_enabled
             mouse_vk = VK_MAP.get(self.config.mouse_button.lower(), 0x06)  # default X2 (0x06)
 
-            user32 = ctypes.windll.user32
             was_down = False
 
             while True:
