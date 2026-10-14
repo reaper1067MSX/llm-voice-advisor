@@ -148,27 +148,68 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
-from concurrent.futures import ThreadPoolExecutor
 import ctypes
+from ctypes import wintypes
 import os
 from pathlib import Path
+import shutil
 import subprocess
+import threading
 import time
 from typing import Any, Callable, List, Optional, Tuple
 import webbrowser
 
 
-def _find_chrome_path() -> Optional[str]:
-    """Locate Google Chrome executable on Windows."""
-    candidates = [
+def _find_browser() -> Tuple[str, Optional[str]]:
+    """Locate preferred browser executable on Windows.
+    
+    Priority:
+    1. Mozilla Firefox (lightweight, minimal plugins, reliable display)
+    2. Microsoft Edge (Windows 11 native fallback)
+    3. Google Chrome (tertiary fallback)
+    """
+    # 1. Firefox
+    ff_cmd = shutil.which("firefox") or shutil.which("firefox.exe")
+    if ff_cmd and os.path.isfile(ff_cmd):
+        return ("firefox", ff_cmd)
+    
+    ff_candidates = [
+        os.path.expandvars(r"%LocalAppData%\Microsoft\WindowsApps\firefox.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Mozilla Firefox\firefox.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"),
+    ]
+    for c in ff_candidates:
+        if os.path.isfile(c):
+            return ("firefox", c)
+
+    # 2. Microsoft Edge
+    edge_cmd = shutil.which("msedge") or shutil.which("msedge.exe")
+    if edge_cmd and os.path.isfile(edge_cmd):
+        return ("edge", edge_cmd)
+
+    edge_candidates = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+    ]
+    for c in edge_candidates:
+        if os.path.isfile(c):
+            return ("edge", c)
+
+    # 3. Google Chrome
+    chrome_cmd = shutil.which("chrome") or shutil.which("chrome.exe")
+    if chrome_cmd and os.path.isfile(chrome_cmd):
+        return ("chrome", chrome_cmd)
+
+    chrome_candidates = [
         os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
     ]
-    for c in candidates:
+    for c in chrome_candidates:
         if os.path.isfile(c):
-            return c
-    return None
+            return ("chrome", c)
+
+    return ("default", None)
 
 
 def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
@@ -215,8 +256,32 @@ def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
         return None
 
 
-def _bring_chrome_to_front_worker() -> None:
-    """Runs in clean thread to attach to user desktop, unminimize, and maximize Chrome on DISPLAY2 without yellow flashing."""
+def _get_process_name_for_hwnd(hwnd: int) -> str:
+    """Safely get executable filename for a window handle."""
+    if os.name != "nt":
+        return ""
+    try:
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        psapi = ctypes.windll.psapi
+
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        hproc = kernel32.OpenProcess(0x1000, False, pid.value)
+        if hproc:
+            buf = ctypes.create_unicode_buffer(1024)
+            pname = ""
+            if psapi.GetProcessImageFileNameW(hproc, buf, 1024):
+                pname = buf.value.split("\\")[-1].lower()
+            kernel32.CloseHandle(hproc)
+            return pname
+    except Exception:
+        pass
+    return ""
+
+
+def _bring_browser_to_front_worker(browser_type: str, title_query: str = "") -> None:
+    """Attach to desktop, unminimize, move to secondary monitor, and maximize without yellow taskbar flash."""
     if os.name != "nt":
         return
     try:
@@ -225,72 +290,126 @@ def _bring_chrome_to_front_worker() -> None:
         if desk:
             user32.SetThreadDesktop(desk)
 
-        # Brief delay to allow Chrome to process the new tab IPC
-        time.sleep(0.4)
+        sec_bounds = _get_secondary_monitor_bounds()
+        target_hwnd = None
+        lower_query = title_query.lower().strip() if title_query else ""
 
-        chrome_hwnds = []
+        # Poll for up to 3.0s (15 iterations of 0.2s) to allow browser window creation
+        for _ in range(15):
+            time.sleep(0.2)
+            matching_hwnds = []
 
-        def enum_cb(hwnd, lparam):
-            cls_buf = ctypes.create_unicode_buffer(256)
-            user32.GetClassNameW(hwnd, cls_buf, 256)
-            if cls_buf.value == "Chrome_WidgetWin_1" and user32.IsWindowVisible(hwnd):
-                title_buf = ctypes.create_unicode_buffer(256)
-                user32.GetWindowTextW(hwnd, title_buf, 256)
-                chrome_hwnds.append((hwnd, title_buf.value))
-            return True
+            def enum_cb(hwnd, lparam):
+                if not user32.IsWindowVisible(hwnd) and not user32.IsIconic(hwnd):
+                    return True
 
-        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-        user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
+                cls_buf = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(hwnd, cls_buf, 256)
+                cls_val = cls_buf.value
 
-        if not chrome_hwnds:
+                title_buf = ctypes.create_unicode_buffer(512)
+                user32.GetWindowTextW(hwnd, title_buf, 512)
+                w_title = title_buf.value.lower()
+
+                if browser_type == "firefox":
+                    if cls_val == "MozillaWindowClass" or (
+                        "firefox" in w_title or (lower_query and lower_query in w_title)
+                    ):
+                        matching_hwnds.append(hwnd)
+                elif browser_type in ("edge", "chrome"):
+                    if cls_val == "Chrome_WidgetWin_1":
+                        # Exclude IDEs, Discord, NVIDIA Broadcast
+                        pname = _get_process_name_for_hwnd(hwnd)
+                        expected = "msedge.exe" if browser_type == "edge" else "chrome.exe"
+                        if pname == expected or expected.split(".")[0] in w_title or (lower_query and lower_query in w_title):
+                            matching_hwnds.append(hwnd)
+                return True
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+            user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
+
+            if matching_hwnds:
+                target_hwnd = matching_hwnds[0]
+                break
+
+        if not target_hwnd:
             return
 
-        target_hwnd = chrome_hwnds[0][0]
-
-        # 1. Check if already positioned on secondary monitor (x < 0)
-        rect = (ctypes.c_long * 4)()
-        user32.GetWindowRect(target_hwnd, rect)
-        current_x = rect[0]
-
-        sec_bounds = _get_secondary_monitor_bounds()
-        already_on_sec = (sec_bounds is not None and current_x < 0)
-
-        # 2. Un-minimize if iconic
+        # 1. Un-minimize if iconic
         if user32.IsIconic(target_hwnd):
             user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
 
-        # 3. Position on secondary monitor ONLY if not already there
-        if sec_bounds and not already_on_sec:
+        # 2. Position on secondary monitor if detected
+        if sec_bounds:
             sx, sy, sw, sh = sec_bounds
             user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
             user32.SetWindowPos(target_hwnd, 0, sx, sy, sw - 10, sh - 10, 0x0040)
 
-        # Ensure maximized
-        if not user32.IsZoomed(target_hwnd):
-            user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
+        # 3. Ensure maximized
+        user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
 
         # 4. Bring to foreground without Windows taskbar yellow flashing:
-        # Simulate an Alt keypress to grant SetForegroundWindow permission
-        user32.keybd_event(0x12, 0, 0, 0)
-        user32.keybd_event(0x12, 0, 2, 0)
+        # Topmost flip forces window to top of the screen Z-order
+        HWND_TOPMOST = -1
+        HWND_NOTOPMOST = -2
+        SWP_NOMOVE = 0x0002
+        SWP_NOSIZE = 0x0001
+        SWP_SHOWWINDOW = 0x0040
+
+        user32.SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+        time.sleep(0.04)
+        user32.SetWindowPos(target_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+        user32.BringWindowToTop(target_hwnd)
+
+        # Bypass Windows 11 ForegroundLockTimeout via harmless Alt key
+        try:
+            import win32com.client
+            shell = win32com.client.Dispatch("WScript.Shell")
+            shell.SendKeys("%")
+        except Exception:
+            user32.keybd_event(0x12, 0, 0, 0)
+            user32.keybd_event(0x12, 0, 2, 0)
+
         user32.SetForegroundWindow(target_hwnd)
+        user32.SwitchToThisWindow(target_hwnd, True)
 
         mon_label = "DISPLAY2 (Secundaria)" if sec_bounds else "Pantalla principal"
-        print(f"🌐 [Google Chrome] Pestaña abierta y maximizada en {mon_label}.", flush=True)
+        browser_names = {
+            "firefox": "Mozilla Firefox",
+            "edge": "Microsoft Edge",
+            "chrome": "Google Chrome",
+        }
+        b_label = browser_names.get(browser_type, browser_type.title())
+        print(f"🌐 [{b_label}] Reporte visual abierto y maximizado en {mon_label}.", flush=True)
 
     except Exception:
         pass
 
 
-def open_and_maximize_in_chrome(file_path: str) -> None:
-    """Open file in Google Chrome, un-minimize, move to secondary monitor, and maximize."""
-    chrome_path = _find_chrome_path()
-    if chrome_path:
+def open_and_maximize_in_browser(file_path: str, title: str = "") -> None:
+    """Open file in preferred browser (Firefox > Edge > Chrome), position and maximize on secondary monitor."""
+    browser_type, browser_path = _find_browser()
+
+    if browser_path:
         try:
-            # Pass absolute Windows path directly to Chrome
-            subprocess.Popen([chrome_path, file_path], shell=False)
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                ex.submit(_bring_chrome_to_front_worker)
+            si = subprocess.STARTUPINFO()
+            if os.name == "nt":
+                si.lpDesktop = r"WinSta0\Default"
+
+            if browser_type == "firefox":
+                args = [browser_path, "-new-window", file_path]
+            else:
+                args = [browser_path, "--new-window", file_path]
+
+            subprocess.Popen(args, startupinfo=si, shell=False)
+
+            # Fire and forget background worker for window raising
+            t = threading.Thread(
+                target=_bring_browser_to_front_worker,
+                args=(browser_type, title),
+                daemon=True,
+            )
+            t.start()
             return
         except Exception:
             pass
@@ -302,6 +421,10 @@ def open_and_maximize_in_chrome(file_path: str) -> None:
         pass
 
 
+# Backwards compatibility alias
+open_and_maximize_in_chrome = open_and_maximize_in_browser
+
+
 def create_html_report(
     title: str,
     html_body: str,
@@ -309,7 +432,7 @@ def create_html_report(
     auto_open: bool = True,
     opener: Optional[Callable[[str], Any]] = None,
 ) -> Path:
-    """Generate a styled HTML report and open it maximized in Google Chrome."""
+    """Generate a styled HTML report and open it maximized in the preferred browser."""
     import unicodedata
 
     out_path = Path(output_dir)
@@ -339,6 +462,6 @@ def create_html_report(
             except Exception:
                 pass
         else:
-            open_and_maximize_in_chrome(resolved_str)
+            open_and_maximize_in_browser(resolved_str, title=title)
 
     return file_path

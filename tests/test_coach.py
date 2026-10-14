@@ -91,3 +91,13 @@ def test_downscale_aspect_ratio_preservation():
     new_size = (int(orig_w * ratio), int(orig_h * ratio))
 
     assert new_size == (1920, 1080)
+
+
+def test_find_browser_order():
+    from abi_coach.reports import _find_browser
+    b_type, b_path = _find_browser()
+    assert b_type in ("firefox", "edge", "chrome", "default")
+    if b_type != "default":
+        assert b_path is not None
+        assert Path(b_path).exists()
+
