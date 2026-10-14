@@ -216,7 +216,7 @@ def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
 
 
 def _bring_chrome_to_front_worker() -> None:
-    """Runs in clean thread to attach to user desktop, unminimize, and maximize Chrome."""
+    """Runs in clean thread to attach to user desktop, unminimize, and maximize Chrome on DISPLAY2 without yellow flashing."""
     if os.name != "nt":
         return
     try:
@@ -247,40 +247,48 @@ def _bring_chrome_to_front_worker() -> None:
 
         target_hwnd = chrome_hwnds[0][0]
 
-        # 1. Un-minimize if iconic
+        # 1. Check if already positioned on secondary monitor (x < 0)
+        rect = (ctypes.c_long * 4)()
+        user32.GetWindowRect(target_hwnd, rect)
+        current_x = rect[0]
+
+        sec_bounds = _get_secondary_monitor_bounds()
+        already_on_sec = (sec_bounds is not None and current_x < 0)
+
+        # 2. Un-minimize if iconic
         if user32.IsIconic(target_hwnd):
             user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
 
-        # 2. Position on secondary monitor if available
-        sec_bounds = _get_secondary_monitor_bounds()
-        if sec_bounds:
+        # 3. Position on secondary monitor ONLY if not already there
+        if sec_bounds and not already_on_sec:
             sx, sy, sw, sh = sec_bounds
             user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
             user32.SetWindowPos(target_hwnd, 0, sx, sy, sw - 10, sh - 10, 0x0040)
-            user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
-        else:
+
+        # Ensure maximized
+        if not user32.IsZoomed(target_hwnd):
             user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
 
-        # 3. Bring to foreground
+        # 4. Bring to foreground without Windows taskbar yellow flashing:
+        # Simulate an Alt keypress to grant SetForegroundWindow permission
+        user32.keybd_event(0x12, 0, 0, 0)
+        user32.keybd_event(0x12, 0, 2, 0)
         user32.SetForegroundWindow(target_hwnd)
 
-        is_vis = bool(user32.IsWindowVisible(target_hwnd))
-        is_icon = bool(user32.IsIconic(target_hwnd))
-        status = "Visible y Activo" if (is_vis and not is_icon) else "Restaurado"
         mon_label = "DISPLAY2 (Secundaria)" if sec_bounds else "Pantalla principal"
-        print(f"🌐 [Google Chrome] Pestaña abierta y maximizada en {mon_label} ({status}).", flush=True)
+        print(f"🌐 [Google Chrome] Pestaña abierta y maximizada en {mon_label}.", flush=True)
 
-    except Exception as e:
+    except Exception:
         pass
 
 
-def open_and_maximize_in_chrome(url: str) -> None:
-    """Open URL in Google Chrome, un-minimize, move to secondary monitor, and maximize."""
+def open_and_maximize_in_chrome(file_path: str) -> None:
+    """Open file in Google Chrome, un-minimize, move to secondary monitor, and maximize."""
     chrome_path = _find_chrome_path()
     if chrome_path:
         try:
-            # Launch or open new tab in Chrome
-            subprocess.Popen([chrome_path, url], shell=False)
+            # Pass absolute Windows path directly to Chrome
+            subprocess.Popen([chrome_path, file_path], shell=False)
             with ThreadPoolExecutor(max_workers=1) as ex:
                 ex.submit(_bring_chrome_to_front_worker)
             return
@@ -289,7 +297,7 @@ def open_and_maximize_in_chrome(url: str) -> None:
 
     # Fallback to default browser
     try:
-        webbrowser.open(url)
+        webbrowser.open(file_path)
     except Exception:
         pass
 
@@ -302,12 +310,15 @@ def create_html_report(
     opener: Optional[Callable[[str], Any]] = None,
 ) -> Path:
     """Generate a styled HTML report and open it maximized in Google Chrome."""
+    import unicodedata
+
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
     timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
     file_timestamp = int(time.time())
-    safe_title = "".join(c if c.isalnum() else "_" for c in title).lower()[:30]
+    ascii_title = unicodedata.normalize("NFKD", title).encode("ASCII", "ignore").decode("utf-8")
+    safe_title = "".join(c if c.isalnum() else "_" for c in ascii_title).lower()[:30].strip("_")
     filename = f"report_{file_timestamp}_{safe_title}.html"
     file_path = out_path / filename
 
@@ -321,10 +332,13 @@ def create_html_report(
         f.write(full_html)
 
     if auto_open:
-        open_func = opener or open_and_maximize_in_chrome
-        try:
-            open_func(str(file_path.resolve().as_uri()))
-        except Exception:
-            pass
+        resolved_str = str(file_path.resolve())
+        if opener is not None:
+            try:
+                opener(resolved_str)
+            except Exception:
+                pass
+        else:
+            open_and_maximize_in_chrome(resolved_str)
 
     return file_path

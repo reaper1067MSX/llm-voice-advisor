@@ -231,6 +231,39 @@ def run_interactive_loop(config) -> None:
         listener.resume_listening()
     print("🎧 Esperando tus preguntas...\n", flush=True)
 
+def should_inspect_screen(prompt: str) -> bool:
+    """Infer if question requires examining the live screen or is conceptual/strategic."""
+    p = prompt.lower().strip()
+
+    # 1. Direct visual triggers
+    visual_triggers = [
+        "mira", "mirá", "mire", "miren", "observa", "fijate", "fíjate", "revisa", "analiza mi pantalla",
+        "en pantalla", "mi pantalla", "la pantalla", "ves", "veo", "viendo",
+    ]
+    if any(trigger in p for trigger in visual_triggers):
+        return True
+
+    # 2. Deictic references (referring to something currently displayed)
+    deictic_patterns = [
+        " esto", "esta ", "este ", "estos ", "estas ", " aqui", " acá", " acá",
+        "cuál me llevo", "cuál guardo", "qué me llevo", "qué guardo", "vale la pena lootear",
+        "dónde estoy", "donde estoy", "por dónde salgo", "por donde salgo", "hacia dónde voy",
+    ]
+    if any(pat in p for pat in deictic_patterns):
+        return True
+
+    # 3. In-game object & inventory references
+    context_triggers = [
+        "mi alijo", "en mi alijo", "mi inventario", "en mi inventario", "mi mochila",
+        "este cuerpo", "el cuerpo", "esta caja", "el cadáver", "el cadaver",
+        "cuánto vale esto", "a cuánto se vende esto", "precio de esto",
+    ]
+    if any(ctx in p for ctx in context_triggers):
+        return True
+
+    return False
+
+
     latest_capture = None
 
     def on_press():
@@ -252,15 +285,26 @@ def run_interactive_loop(config) -> None:
         nonlocal latest_capture
         now_str = time.strftime("%H:%M:%S")
         print(f"[{now_str}] 🗣️ Tú preguntaste: \"{transcript}\"", flush=True)
+
         cap = latest_capture
         latest_capture = None
 
-        print(f"[{now_str}] 🧠 Coach analizando la situación y tu pantalla...", flush=True)
+        # Smart visual inference
+        needs_screen = should_inspect_screen(transcript)
+        if needs_screen and cap:
+            print(f"[{now_str}] 👁️ Consulta visual detectada (\"mira\" / deíctica). Analizando captura 1440p...", flush=True)
+            img_bytes = cap.full_image_bytes
+            crp_bytes = cap.crop_bytes
+        else:
+            print(f"[{now_str}] 💡 Consulta estratégica/conceptual (respuesta directa ultra-rápida)...", flush=True)
+            img_bytes = None
+            crp_bytes = None
+
         try:
             resp = brain.ask(
                 prompt=transcript,
-                image_bytes=cap.full_image_bytes if cap else None,
-                crop_bytes=cap.crop_bytes if cap else None,
+                image_bytes=img_bytes,
+                crop_bytes=crp_bytes,
             )
 
             now_resp = time.strftime("%H:%M:%S")
