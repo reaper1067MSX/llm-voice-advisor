@@ -30,6 +30,7 @@ speaker:
     assert cfg.speaker.voice == "es-MX-DaliaNeural"
     assert cfg.capture.downscale_width == 1920
     assert cfg.capture.downscale_height == 1080
+    assert cfg.listener.whisper_beam_size == 1
 
 
 def test_clean_text_for_speech():

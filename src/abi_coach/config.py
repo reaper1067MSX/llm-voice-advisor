@@ -51,6 +51,7 @@ class ListenerConfig:
     whisper_model: str = "large-v3-turbo"
     whisper_device: str = "cuda"
     whisper_compute_type: str = "float16"
+    whisper_beam_size: int = 1
     language: str = "es"
 
 
@@ -149,6 +150,7 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         whisper_model=str(lis_raw.get("whisper_model", "large-v3-turbo")),
         whisper_device=str(lis_raw.get("whisper_device", "cuda")),
         whisper_compute_type=str(lis_raw.get("whisper_compute_type", "float16")),
+        whisper_beam_size=int(lis_raw.get("whisper_beam_size", 1)),
         language=str(lis_raw.get("language", "es")),
     )
 

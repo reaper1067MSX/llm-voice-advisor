@@ -58,6 +58,8 @@ listener:
   whisper_model: "large-v3-turbo"
   whisper_device: "cuda"
   whisper_compute_type: "float16"
+  # Beam size: 1 = greedy decoding ultra-rápido (<150ms), 5 = búsqueda exhaustiva
+  whisper_beam_size: 1
   language: "es"
 
 speaker:

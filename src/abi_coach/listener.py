@@ -128,13 +128,14 @@ class AudioListener:
 
     def transcribe_audio(self, audio_data: np.ndarray) -> Optional[str]:
         """Transcribe audio with GPU acceleration and automatic CPU fallback."""
+        beam_size = getattr(self.config, "whisper_beam_size", 1)
         try:
             model = self.init_whisper()
             segments, _ = model.transcribe(
                 audio_data,
                 language=self.config.language,
                 vad_filter=True,
-                beam_size=5,
+                beam_size=beam_size,
             )
             transcript = " ".join(seg.text.strip() for seg in segments).strip()
             return transcript if transcript else None
@@ -150,7 +151,7 @@ class AudioListener:
                     audio_data,
                     language=self.config.language,
                     vad_filter=True,
-                    beam_size=5,
+                    beam_size=beam_size,
                 )
                 transcript = " ".join(seg.text.strip() for seg in segments).strip()
                 return transcript if transcript else None
