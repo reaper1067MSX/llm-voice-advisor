@@ -23,8 +23,9 @@ from abi_coach.speaker import Speaker
 
 BANNER = """
 ==================================================================
-           🎯 ABI VOICE COACH - Arena Breakout: Infinite
+           {title}
 ==================================================================
+  * Preset de juego: {game_display}
   * Optimizado para 1440p (DISPLAY1) + Navegador en DISPLAY2
   * Push-to-Talk: Mantén presionado [{key}] para hablar
   * Transcripción local en GPU: {gpu}
@@ -138,8 +139,18 @@ import sounddevice as sd
 
 def run_interactive_loop(config) -> None:
     """Start the main event-driven Push-to-Talk coach loop."""
+    game_lower = (config.gemini.game or "generic").lower().strip()
+    if game_lower in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
+        title_str = "🎯 ABI TACTICAL COACH - Arena Breakout: Infinite"
+        game_display = "Arena Breakout: Infinite (S7 Balística & Alijo)"
+    else:
+        title_str = "🎮 GAME ADVISOR - AI Gaming Voice Co-pilot"
+        game_display = "Universal / Multijuego (Análisis en vivo de pantalla)"
+
     print(
         BANNER.format(
+            title=title_str,
+            game_display=game_display,
             key=config.listener.ptt_key.upper(),
             gpu=f"{config.listener.whisper_device.upper()} ({config.listener.whisper_compute_type})",
             voice=config.speaker.voice,
@@ -370,8 +381,9 @@ def cmd_list_voices() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ABI Voice Coach - Copiloto Táctico para Arena Breakout Infinite")
+    parser = argparse.ArgumentParser(description="LLM Game Advisor - Copiloto Táctico Multimodal por Voz")
     parser.add_argument("--config", type=str, default=None, help="Ruta al archivo config.yaml")
+    parser.add_argument("--game", type=str, default=None, help="Preset de juego: 'abi' (Arena Breakout) o 'generic' (Asesor multijuego)")
     parser.add_argument("--list-models", action="store_true", help="Listar modelos disponibles en Google AI Studio")
     parser.add_argument("--list-voices", action="store_true", help="Listar catálogo de voces femeninas naturales")
     parser.add_argument("--voice", type=str, default=None, help="Voz temporal para probar con --test-tts")
@@ -382,6 +394,9 @@ def main() -> None:
 
     args = parser.parse_args()
     cfg = load_config(args.config)
+
+    if args.game:
+        cfg.gemini.game = args.game
 
     if args.voice:
         cfg.speaker.voice = args.voice

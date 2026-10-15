@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0detener_game_advisor.bat"
+call "%~dp0detener.bat"

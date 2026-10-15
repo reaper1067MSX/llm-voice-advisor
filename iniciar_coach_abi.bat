@@ -91,7 +91,7 @@ echo  - Las tablas de municion y graficas Chart.js se desplegaran solas en tu se
 echo  - Configura el juego en modo "Ventana sin bordes" (Borderless Windowed).
 echo.
 
-"%UV_BIN%" run python -m abi_coach.main %*
+"%UV_BIN%" run python -m abi_coach.main --game abi %*
 set "EXIT_CODE=%errorlevel%"
 
 if not "%EXIT_CODE%"=="0" goto :ERROR_EXIT

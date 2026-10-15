@@ -106,11 +106,12 @@ Para que el copiloto pueda razonar tus preguntas y ver tu pantalla, utiliza la i
 
 ## 🚀 Inicio Rápido con 1 Clic
 
-Una vez instalado, tienes dos lanzadores listos para usar:
+El proyecto incluye lanzadores con **inyección automática del System Prompt de IA** según el juego:
 
-* **🎮 Copiloto General (Cualquier Juego):** Haz doble clic en **`game_advisor.bat`**
-* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Haz doble clic en **`iniciar_coach_abi.bat`**
-*(Nota: `iniciar_advisor.bat` e `iniciar_coach.bat` siguen funcionando como accesos directos).*
+* **🎮 Copiloto Multijuego General:** Haz doble clic en **`game_advisor.bat`**  
+  *Inyecta el prompt de Asesor Universal: visión en vivo de HUD, análisis de interfaz, loot, inventario y dashboards para cualquier videojuego.*
+* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Haz doble clic en **`iniciar_coach_abi.bat`**  
+  *Inyecta el prompt militar y económico de ABI: balística de S7, penetración de blindaje por calibre, valor por casilla y alijo.*
 
 Cuando veas en la consola:
 ```text
@@ -118,19 +119,25 @@ Cuando veas en la consola:
 ```
 ¡Ya puedes entrar a tu partida y hablarle con total naturalidad!
 
-Para apagar el copiloto al terminar de jugar, haz doble clic en **`detener_game_advisor.bat`** (o `detener_coach_abi.bat`) o presiona `Ctrl+C` en la consola.
+### 🛑 ¿Cómo detener el asistente? (1 solo script unificado)
+Para apagar cualquier copiloto al terminar de jugar y liberar inmediatamente la memoria GPU (VRAM), hilos de audio y el stream de micrófono, simplemente haz doble clic en:
+```text
+👉 detener.bat
+```
+*(O presiona `Ctrl+C` en la ventana de la consola).*
 
 ---
 
 ## 🕹️ Guía Completa de Comandos CLI (Referencia Exhaustiva)
 
-Además de los archivos `.bat`, el proyecto cuenta con una potente Interfaz de Línea de Comandos (CLI) que te permite realizar diagnósticos, probar componentes individuales y hacer consultas sin micrófono.
+Además de los archivos `.bat`, el proyecto cuenta con una potente Interfaz de Línea de Comandos (CLI) que te permite alternar juegos, realizar diagnósticos, probar componentes individuales y hacer consultas sin micrófono.
 
-Puedes invocar los comandos usando `uv run llm-voice-advisor <comando>` (o `python -m abi_coach.main <comando>`):
+Puedes invocar los comandos usando `uv run game-advisor <comando>` (o `python -m abi_coach.main <comando>`):
 
 | Comando / Parámetro | Acción y Utilidad | ¿Consume Tokens de Gemini? |
 | :--- | :--- | :---: |
 | *(sin parámetros)* | **Modo Principal:** Inicia el bucle continuo del copiloto en tiempo real (VAD manos libres o PTT). | Solo al preguntar |
+| `--game <abi\|generic>` | **Inyector de Prompt de Juego:** Alterna entre `'abi'` (Arena Breakout) o `'generic'` (Multijuego universal). | Solo al preguntar |
 | `--test-mic` | **Prueba de Micrófono:** Graba 3 segundos de tu voz, la procesa en GPU con Whisper y muestra la transcripción. | ❌ NO (100% local) |
 | `--test-tts "<texto>"` | **Prueba de Voz:** Reproduce por tus audífonos el texto indicado usando el motor neural para verificar volumen y entonación. | ❌ NO (Gratis) |
 | `--list-voices` | **Catálogo de Voces:** Lista todas las voces femeninas en español disponibles con sus IDs, países y descripciones. | ❌ NO |

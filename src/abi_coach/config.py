@@ -14,6 +14,8 @@ class GeminiConfig:
     media_resolution: str = "high"
     temperature: float = 0.3
     api_key: Optional[str] = None
+    game: str = "generic"
+    system_instruction: Optional[str] = None
 
 
 @dataclass
@@ -102,10 +104,12 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     gemini_raw = raw.get("gemini", {})
     api_key = os.getenv("GEMINI_API_KEY") or gemini_raw.get("api_key")
     gemini_cfg = GeminiConfig(
-        model=gemini_raw.get("model", "gemini-2.5-flash"),
+        model=gemini_raw.get("model", "gemini-3.1-flash-lite-preview"),
         media_resolution=gemini_raw.get("media_resolution", "high"),
         temperature=float(gemini_raw.get("temperature", 0.3)),
         api_key=api_key,
+        game=str(gemini_raw.get("game", "generic")).lower(),
+        system_instruction=gemini_raw.get("system_instruction"),
     )
 
     cap_raw = raw.get("capture", {})
