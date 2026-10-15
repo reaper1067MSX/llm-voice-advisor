@@ -300,4 +300,26 @@ def test_brain_with_mock_provider(tmp_path: Path):
     assert brain.history[1].text == "Mocked advice: use M80."
 
 
+def test_tactical_report_builder(tmp_path: Path):
+    from abi_coach.slices.reporting.builder import TacticalReportBuilder
 
+    builder = (
+        TacticalReportBuilder(title="Comparativa Balística", game_badge="ABI Copilot")
+        .add_badge("Calibre", "7.62x51mm", color="purple")
+        .add_table(headers=["Bala", "Penetración"], rows=[["M80", "Tier 4"], ["M62", "Tier 5"]])
+        .add_chart("chart1", "bar", ["M80", "M62"], [{"label": "Penetración", "data": [44, 53]}], title="Gráfico Balístico")
+    )
+    body = builder.build_body()
+    assert "7.62x51mm" in body
+    assert "M80" in body
+    assert "Tier 5" in body
+    assert 'canvas id="chart1"' in body
+
+    report_path = builder.save_and_open(
+        output_dir=str(tmp_path / "reports"),
+        auto_open=False,
+    )
+    assert report_path.is_file()
+    html_content = report_path.read_text(encoding="utf-8")
+    assert "Comparativa Balística" in html_content
+    assert "chart.js" in html_content.lower()
