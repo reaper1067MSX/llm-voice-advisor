@@ -153,4 +153,61 @@ def test_load_preset():
     assert "Game Advisor" in fallback
 
 
+def test_should_inspect_screen_heuristics():
+    from abi_coach.main import should_inspect_screen
+
+    # Positive visual triggers
+    assert should_inspect_screen("mira qué arma es esta") is True
+    assert should_inspect_screen("observa mi pantalla por favor") is True
+    assert should_inspect_screen("ves el loot del alijo") is True
+    assert should_inspect_screen("cuál me llevo de estas dos") is True
+    assert should_inspect_screen("vale la pena lootear este cadáver") is True
+
+    # Negative / Strategic conceptual queries
+    assert should_inspect_screen("qué munición tiene mejor penetración") is False
+    assert should_inspect_screen("cómo funciona el TTK de las balas") is False
+    assert should_inspect_screen("cuál es la mejor estrategia para farmear") is False
+
+
+def test_focus_browser_configuration(tmp_path: Path):
+    cfg_file = tmp_path / "custom_config.yaml"
+    cfg_file.write_text(
+        """
+reports:
+  focus_browser: true
+  preferred_browser: "chrome"
+""",
+        encoding="utf-8",
+    )
+    cfg = load_config(str(cfg_file))
+    assert cfg.reports.focus_browser is True
+    assert cfg.reports.preferred_browser == "chrome"
+
+
+def test_record_seconds_mocked():
+    import numpy as np
+    import threading
+    import time
+    from abi_coach.listener import AudioListener, ListenerConfig
+
+    config = ListenerConfig()
+    listener = AudioListener(config)
+
+    # Mock stream and transcription without hardware
+    listener.start_stream = lambda: None
+    listener.transcribe_audio = lambda arr: f"transcribed_{len(arr)}"
+
+    sample_chunk = np.zeros((1024, 1), dtype=np.float32)
+
+    def feeder():
+        time.sleep(0.02)
+        listener._audio_queue.put((sample_chunk, 0.05))
+
+    t = threading.Thread(target=feeder, daemon=True)
+    t.start()
+
+    res = listener.record_seconds(duration_sec=0.15)
+    assert res == "transcribed_1024"
+
+
 
