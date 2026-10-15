@@ -493,12 +493,11 @@ def create_html_report(
             except Exception:
                 pass
         else:
-            open_and_maximize_in_browser(
-                resolved_str,
-                title=title,
-                preferred=preferred_browser,
-                focus_browser=focus_browser,
-            )
+            threading.Thread(
+                target=open_and_maximize_in_browser,
+                args=(resolved_str, title, preferred_browser, focus_browser),
+                daemon=True,
+            ).start()
 
     return file_path
 
