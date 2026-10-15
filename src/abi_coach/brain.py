@@ -18,6 +18,7 @@ from abi_coach.memory import CompanionMemory, MemoryItem
 from abi_coach.providers.base import LLMProvider
 from abi_coach.providers.factory import create_llm_provider
 from abi_coach.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.reconciler import KnowledgeReconciler, ReconciliationDiff
 from abi_coach.reports import create_html_report
 
 
@@ -162,6 +163,7 @@ class Brain:
         provider: Optional[LLMProvider] = None,
         memory: Optional[CompanionMemory] = None,
         rag: Optional[KnowledgeRAG] = None,
+        reconciler: Optional[KnowledgeReconciler] = None,
         db: Optional[DatabaseManager] = None,
     ):
         self.config = config
@@ -188,6 +190,12 @@ class Brain:
             self.rag = KnowledgeRAG(
                 database, default_game=getattr(config.gemini, "game", "generic")
             )
+
+        if reconciler is not None:
+            self.reconciler = reconciler
+        else:
+            database = db or (self.rag.db if self.rag else DatabaseManager())
+            self.reconciler = KnowledgeReconciler(database, self.rag)
 
     @property
     def client(self) -> Any:
