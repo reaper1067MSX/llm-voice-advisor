@@ -1,5 +1,17 @@
-"""AI Model Provider abstractions for ABI Coach / LLM Voice Advisor."""
+"""Backward compatibility shim for abi_coach.providers."""
 
-from abi_coach.providers.base import LLMProvider, ProviderResponse
+from abi_coach.core.llm import (
+    GeminiProvider,
+    LLMProvider,
+    NvidiaNIMProvider,
+    ProviderResponse,
+    create_llm_provider,
+)
 
-__all__ = ["LLMProvider", "ProviderResponse"]
+__all__ = [
+    "GeminiProvider",
+    "LLMProvider",
+    "NvidiaNIMProvider",
+    "ProviderResponse",
+    "create_llm_provider",
+]
