@@ -17,6 +17,7 @@ from abi_coach.db import DatabaseManager
 from abi_coach.memory import CompanionMemory, MemoryItem
 from abi_coach.providers.base import LLMProvider
 from abi_coach.providers.factory import create_llm_provider
+from abi_coach.rag import KnowledgeItem, KnowledgeRAG
 from abi_coach.reports import create_html_report
 
 
@@ -160,6 +161,7 @@ class Brain:
         report_opener: Optional[Callable[[str], Any]] = None,
         provider: Optional[LLMProvider] = None,
         memory: Optional[CompanionMemory] = None,
+        rag: Optional[KnowledgeRAG] = None,
         db: Optional[DatabaseManager] = None,
     ):
         self.config = config
@@ -176,6 +178,14 @@ class Brain:
         else:
             database = db or DatabaseManager()
             self.memory = CompanionMemory(
+                database, default_game=getattr(config.gemini, "game", "generic")
+            )
+
+        if rag is not None:
+            self.rag = rag
+        else:
+            database = db or (self.memory.db if self.memory else DatabaseManager())
+            self.rag = KnowledgeRAG(
                 database, default_game=getattr(config.gemini, "game", "generic")
             )
 
@@ -241,6 +251,13 @@ class Brain:
             history_slice = []
 
         history_lines = [f"{turn.role.upper()}: {turn.text}" for turn in history_slice]
+
+        # 2. Add local tactical RAG facts if matching query (< 3ms FTS5 retrieval)
+        if self.rag:
+            game_name = getattr(self.config.gemini, "game", "generic") or "generic"
+            rag_context = self.rag.format_context_for_prompt(prompt, game=game_name, limit=2)
+            if rag_context:
+                history_lines.append(rag_context)
 
         res = self.provider.generate(
             prompt=prompt,

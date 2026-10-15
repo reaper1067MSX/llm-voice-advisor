@@ -1,0 +1,101 @@
+[
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:7.62x51:m80",
+    "title": "Bala 7.62x51mm M80",
+    "data_json": "{\"caliber\": \"7.62x51mm\", \"tier\": 4, \"penetration\": 44, \"damage\": 76, \"armor_damage\": 42, \"velocity\": 840, \"cost_tier\": \"económica\"}",
+    "summary": "Calibre 7.62x51mm. Tier 4, Penetración 44, Daño base 76, Daño a armadura 42. Mejor opción costo-beneficio para FAL y M110 en partidas estándar.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:7.62x51:m62",
+    "title": "Bala 7.62x51mm M62 Tracer",
+    "data_json": "{\"caliber\": \"7.62x51mm\", \"tier\": 5, \"penetration\": 53, \"damage\": 71, \"armor_damage\": 55, \"velocity\": 853, \"cost_tier\": \"alta\"}",
+    "summary": "Calibre 7.62x51mm Trazadora. Tier 5, Penetración 53, Daño 71, Daño a armadura 55. Recomendada para zonas Lockdown y Forbidden contra blindajes pesados.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:7.62x51:m61",
+    "title": "Bala 7.62x51mm M61 AP",
+    "data_json": "{\"caliber\": \"7.62x51mm\", \"tier\": 6, \"penetration\": 65, \"damage\": 65, \"armor_damage\": 68, \"velocity\": 849, \"cost_tier\": \"extrema\"}",
+    "summary": "Calibre 7.62x51mm AP. Tier 6, Penetración 65, Daño 65, Daño a armadura 68. Perfora cascos y chalecos Tier 6 con facilidad. Costo muy elevado.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:9x19:dumdum",
+    "title": "Bala 9x19mm Dum-Dum",
+    "data_json": "{\"caliber\": \"9x19mm\", \"tier\": 0, \"penetration\": 12, \"damage\": 77, \"armor_damage\": 8, \"velocity\": 365, \"cost_tier\": \"muy económica\"}",
+    "summary": "Calibre 9x19mm punta hueca. Tier 0 (Flesh Damage), Penetración 12, Daño a carne 77. Rey del 'Leg Meta' con MP5 o Vector a extremidades sin blindaje.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:9x19:ap63",
+    "title": "Bala 9x19mm AP6.3",
+    "data_json": "{\"caliber\": \"9x19mm\", \"tier\": 3, \"penetration\": 31, \"damage\": 52, \"armor_damage\": 29, \"velocity\": 392, \"cost_tier\": \"media\"}",
+    "summary": "Calibre 9x19mm AP. Tier 3, Penetración 31, Daño 52, Daño a armadura 29. Diseñada para perforar cascos y chalecos ligeros Tier 3 con subfusiles.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:5.56x45:m855a1",
+    "title": "Bala 5.56x45mm A1 (M855A1)",
+    "data_json": "{\"caliber\": \"5.56x45mm\", \"tier\": 4, \"penetration\": 43, \"damage\": 49, \"armor_damage\": 36, \"velocity\": 940, \"cost_tier\": \"media-alta\"}",
+    "summary": "Calibre 5.56x45mm. Tier 4, Penetración 43, Daño 49, Daño a armadura 36. Munición estándar competitiva para M4A1, HK416 y MDR.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "ammo",
+    "entity_key": "ammo:7.62x39:bp",
+    "title": "Bala 7.62x39mm BP",
+    "data_json": "{\"caliber\": \"7.62x39mm\", \"tier\": 4, \"penetration\": 45, \"damage\": 57, \"armor_damage\": 44, \"velocity\": 730, \"cost_tier\": \"media-alta\"}",
+    "summary": "Calibre 7.62x39mm. Tier 4, Penetración 45, Daño 57, Daño a armadura 44. Munición demoledora de Tier 4 para AKM, Mutant y ACE 31.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "item",
+    "entity_key": "item:gold_lion",
+    "title": "León de Oro (Coleccionable)",
+    "data_json": "{\"slots\": 6, \"approx_value\": 450000, \"rarity\": \"gold\", \"value_per_slot\": 75000}",
+    "summary": "Objeto dorado de 6 casillas. Valor de mercado aproximado ~450.000 a 500.000 Koens (75.000 por casilla). Máxima prioridad de extracción segura en alijo.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  },
+  {
+    "game": "abi",
+    "category": "map",
+    "entity_key": "map:farm:motel",
+    "title": "Motel de Granja (Zona Caliente)",
+    "data_json": "{\"map\": \"Granja\", \"risk\": \"muy alto\", \"loot_tier\": \"alto\", \"key_rooms\": [\"Habitación Principal\", \"Habitación 201\"]}",
+    "summary": "Punto de mayor conflicto en Granja. Contiene caja fuerte electrónica, maletines de armas y el spawn más frecuente de jefes y escuadrones con blindaje Tier 4+.",
+    "source": "official_patch",
+    "game_version": "S7.0",
+    "confidence": 1.0
+  }
+]
