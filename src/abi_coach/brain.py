@@ -6,6 +6,7 @@ HTML report generation via tool calls, and token-efficient rolling text history.
 
 from dataclasses import dataclass, field
 import os
+from pathlib import Path
 import time
 from typing import Any, Callable, Dict, List, Optional
 from google import genai
@@ -120,6 +121,34 @@ class CoachResponse:
     latency_ms: float = 0.0
 
 
+_PRESET_CACHE: Dict[str, str] = {}
+
+
+def load_preset(game_name: str) -> str:
+    """Load game system instruction markdown from presets directory with in-memory cache."""
+    clean_name = (game_name or "").lower().strip()
+    canonical = (
+        "abi"
+        if clean_name in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout")
+        else "generic"
+    )
+    if canonical in _PRESET_CACHE:
+        return _PRESET_CACHE[canonical]
+
+    preset_path = Path(__file__).parent / "presets" / f"{canonical}.md"
+    if preset_path.is_file():
+        try:
+            text = preset_path.read_text(encoding="utf-8").strip()
+            _PRESET_CACHE[canonical] = text
+            return text
+        except Exception:
+            pass
+
+    fallback = ABI_SYSTEM_INSTRUCTION if canonical == "abi" else GENERIC_SYSTEM_INSTRUCTION
+    _PRESET_CACHE[canonical] = fallback
+    return fallback
+
+
 class Brain:
     def __init__(self, config: AppConfig, report_opener: Optional[Callable[[str], Any]] = None):
         self.config = config
@@ -147,10 +176,7 @@ class Brain:
         """Retorna la instrucción de sistema adecuada según el preset de juego o personalización."""
         if self.config.gemini.system_instruction:
             return self.config.gemini.system_instruction
-        game = (self.config.gemini.game or "").lower().strip()
-        if game in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
-            return ABI_SYSTEM_INSTRUCTION
-        return GENERIC_SYSTEM_INSTRUCTION
+        return load_preset(self.config.gemini.game or "")
 
     def ask(
         self,

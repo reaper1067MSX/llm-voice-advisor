@@ -139,4 +139,18 @@ def test_history_slice_bounds():
     assert compute_slice(history, 2)[0].text == "turn6"
 
 
+def test_load_preset():
+    from abi_coach.brain import load_preset
+
+    abi_preset = load_preset("abi")
+    assert "Arena Breakout: Infinite" in abi_preset
+    assert "create_html_report" in abi_preset
+
+    gen_preset = load_preset("generic")
+    assert "Game Advisor" in gen_preset
+
+    fallback = load_preset("unknown_game_xyz")
+    assert "Game Advisor" in fallback
+
+
 
