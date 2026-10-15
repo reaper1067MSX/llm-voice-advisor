@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional
+from abi_coach.cache import MindCacheLRU
 from abi_coach.db import DatabaseManager
 
 
@@ -26,9 +27,15 @@ class KnowledgeItem:
 class KnowledgeRAG:
     """Local, sub-3ms factual retrieval engine using SQLite FTS5 BM25 full-text indexing."""
 
-    def __init__(self, db: DatabaseManager, default_game: str = "generic"):
+    def __init__(
+        self,
+        db: DatabaseManager,
+        default_game: str = "generic",
+        cache: Optional[MindCacheLRU] = None,
+    ):
         self.db = db
         self.default_game = (default_game or "generic").lower().strip()
+        self.cache = cache if cache is not None else MindCacheLRU(capacity=128, default_ttl_seconds=300.0)
         self._ensure_seed_loaded()
 
     def _normalize_game(self, game: Optional[str]) -> str:
@@ -66,9 +73,14 @@ class KnowledgeRAG:
                     pass
 
     def upsert_knowledge(self, item: KnowledgeItem) -> int:
-        """Insert or update a factual knowledge entry."""
+        """Insert or update a factual knowledge entry and invalidate L1 cache."""
         con = self.db.get_connection()
         game = self._normalize_game(item.game)
+
+        # Invalidate L1 cache for this entity and prefix queries
+        self.cache.invalidate(f"rag:entity:{item.entity_key.strip()}")
+        self.cache.invalidate_prefix(f"rag:search:{game}:")
+
         with con:
             cur = con.execute(
                 """
@@ -104,7 +116,12 @@ class KnowledgeRAG:
             return cur.lastrowid
 
     def get_entity(self, entity_key: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a specific entity by its unique entity_key."""
+        """Retrieve a specific entity by its unique entity_key, utilizing L1 cache (< 0.05ms)."""
+        cache_key = f"rag:entity:{entity_key.strip()}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         con = self.db.get_connection()
         cur = con.cursor()
         cur.execute(
@@ -116,31 +133,37 @@ class KnowledgeRAG:
             (entity_key.strip(),),
         )
         row = cur.fetchone()
-        return dict(row) if row else None
+        result = dict(row) if row else None
+        if result:
+            self.cache.set(cache_key, result, ttl_seconds=300.0)
+        return result
 
     def _sanitize_fts_query(self, raw_query: str) -> str:
         """Extract alphanumeric keywords and escape them into safe FTS5 prefix match tokens."""
-        # Split into individual words/numbers, removing punctuation that breaks FTS5 syntax
         words = re.findall(r"[A-Za-z0-9_\.]+", raw_query)
-        # Filter very short noise words
         tokens = [w for w in words if len(w) > 1 and w.lower() not in ("de", "la", "el", "los", "las", "un", "una", "en", "con", "por", "para", "que", "qué")]
         if not tokens:
             return ""
-        # Create FTS5 query with prefix matching on tokens
         clauses = [f'"{t}"*' for t in tokens]
         return " OR ".join(clauses)
 
     def search(
         self, query: str, game: Optional[str] = None, limit: int = 3
     ) -> List[Dict[str, Any]]:
-        """Search game knowledge using FTS5 BM25 match."""
+        """Search game knowledge using FTS5 BM25 match with L1 query caching."""
         g = self._normalize_game(game)
+        cache_key = f"rag:search:{g}:{query.strip().lower()}:{limit}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         fts_query = self._sanitize_fts_query(query)
         if not fts_query:
             return []
 
         con = self.db.get_connection()
         cur = con.cursor()
+        results: List[Dict[str, Any]] = []
         try:
             cur.execute(
                 """
@@ -154,9 +177,8 @@ class KnowledgeRAG:
                 """,
                 (fts_query, g, limit),
             )
-            return [dict(r) for r in cur.fetchall()]
+            results = [dict(r) for r in cur.fetchall()]
         except Exception:
-            # Fallback to simple LIKE search if FTS syntax fails
             pattern = f"%{query.strip()}%"
             cur.execute(
                 """
@@ -168,7 +190,11 @@ class KnowledgeRAG:
                 """,
                 (g, pattern, pattern, pattern, limit),
             )
-            return [dict(r) for r in cur.fetchall()]
+            results = [dict(r) for r in cur.fetchall()]
+
+        if results:
+            self.cache.set(cache_key, results, ttl_seconds=60.0)
+        return results
 
     def format_context_for_prompt(
         self, query: str, game: Optional[str] = None, limit: int = 2
