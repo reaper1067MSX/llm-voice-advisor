@@ -115,8 +115,22 @@ automáticamente en tu segundo monitor.
     readme_path.write_text(readme_content, encoding="utf-8")
     print("  * LEEME.txt generado con exito en dist/")
 
+    # 6. Empaquetar en archivo ZIP para GitHub Releases
+    zip_name = "game-advisor-windows-x64-v0.1.0.zip"
+    zip_path = root / "dist" / zip_name
+    print(f"\n>> Comprimiendo paquete release para GitHub: {zip_name}...", flush=True)
+    import zipfile
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        for f in dist_dir.rglob("*"):
+            if f.is_file():
+                arcname = f.relative_to(dist_dir.parent)
+                zf.write(f, arcname)
+    zip_size_mb = zip_path.stat().st_size / (1024 * 1024)
+    print(f"  * Paquete ZIP creado con exito: {zip_path.name} ({zip_size_mb:.1f} MB)", flush=True)
+
     print("\n[OK] Release generado exitosamente en:")
-    print(f"   {dist_dir.resolve()}")
+    print(f"   Carpeta: {dist_dir.resolve()}")
+    print(f"   Archivo ZIP: {zip_path.resolve()}")
 
 
 if __name__ == "__main__":

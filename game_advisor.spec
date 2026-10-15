@@ -28,9 +28,17 @@ binaries += collect_dynamic_libs('ctranslate2')
 sp_path = Path(sysconfig.get_path('purelib'))
 nvidia_path = sp_path / 'nvidia'
 if nvidia_path.is_dir():
+    # Only bundle the essential cuBLAS and cuDNN DLLs required by CTranslate2
+    needed_dll_prefixes = (
+        'cublas64',
+        'cublasLt64',
+        'cudnn64',
+        'cudnn_ops64',
+        'cudnn_cnn64',
+    )
     for dll in nvidia_path.glob('**/*.dll'):
-        binaries.append((str(dll), '.'))
-        binaries.append((str(dll), f"nvidia/{dll.parent.parent.name}/bin"))
+        if any(dll.name.lower().startswith(p.lower()) for p in needed_dll_prefixes):
+            binaries.append((str(dll), '.'))
 
 hiddenimports = [
     'sounddevice',
