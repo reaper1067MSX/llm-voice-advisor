@@ -63,8 +63,22 @@ def test_create_html_report_injectable_opener(tmp_path: Path):
     assert "Comparativa de Balas 7.62" in content
     assert "Contenido de prueba" in content
     assert "cdn.jsdelivr.net/npm/chart.js" in content
+    assert "Content-Security-Policy" in content
     assert len(opened_urls) == 1
     assert str(report_path.name) in opened_urls[0]
+
+
+def test_create_html_report_sanitizes_title(tmp_path: Path):
+    report_path = create_html_report(
+        title="Test <script>alert(1)</script> & 'Attack'",
+        html_body="<p>Body</p>",
+        output_dir=str(tmp_path / "reports"),
+        auto_open=False,
+    )
+    content = report_path.read_text(encoding="utf-8")
+    assert "<script>alert(1)</script>" not in content
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+    assert "Content-Security-Policy" in content
 
 
 def test_capture_region_cropping():

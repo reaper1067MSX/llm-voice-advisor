@@ -15,6 +15,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
     <title>{title} - ABI Coach</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -447,6 +448,7 @@ def create_html_report(
     preferred_browser: str = "firefox",
 ) -> Path:
     """Generate a styled HTML report and open it maximized in the preferred browser."""
+    import html
     import unicodedata
 
     out_path = Path(output_dir)
@@ -459,8 +461,10 @@ def create_html_report(
     filename = f"report_{file_timestamp}_{safe_title}.html"
     file_path = out_path / filename
 
+    safe_title_html = html.escape(title)
+
     full_html = HTML_TEMPLATE.format(
-        title=title,
+        title=safe_title_html,
         content=html_body,
         timestamp=timestamp_str,
     )
