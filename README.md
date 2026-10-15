@@ -1,6 +1,6 @@
 # 🎙️ LLM Voice Advisor - Real-Time AI Gaming Co-pilot
 
-Un asistente táctico y copiloto por voz con IA multimodal para PC en tiempo real. Diseñado para gamers que buscan optimizar su juego, economía y estrategia sin apartar las manos del teclado ni tapar la pantalla del juego.
+Un asistente táctico y copiloto por voz con Inteligencia Artificial multimodal para PC en tiempo real. Diseñado para gamers que buscan optimizar su juego, economía y estrategia sin apartar las manos del teclado ni tapar la pantalla del juego.
 
 Cuenta con detección de voz manos libres (**Voice Activity Detection / VAD**), transcripción local ultrarrápida en GPU (**Whisper**), síntesis de voz femenina natural (**TTS**), inferencia visual inteligente y **dashboards tácticos interactivos** (tablas estilizadas y gráficos Chart.js) que se despliegan automáticamente en tu segundo monitor.
 
@@ -8,97 +8,95 @@ Cuenta con detección de voz manos libres (**Voice Activity Detection / VAD**), 
 
 ---
 
-## 🧭 Guía de Instalación para Gamers (Sin conocimientos técnicos)
+## 🛑 Antes de empezar: Preguntas Frecuentes para No Desarrolladores
 
-No necesitas ser programador ni saber usar la terminal para poner a funcionar tu copiloto. Sigue estos 4 pasos:
+Para que cualquier persona pueda usar este proyecto sin complicaciones técnicas:
+
+| Pregunta | Respuesta sencilla |
+| :--- | :--- |
+| **¿Tengo que instalar Python a mano?** | **NO.** El lanzador incluido (`iniciar_advisor.bat`) se encarga de descargar y configurar Python automáticamente de forma limpia y aislada. |
+| **¿Tengo que instalar UV a mano?** | **NO.** Al hacer doble clic en el archivo `.bat`, este detecta si tienes `uv` instalado; si no lo tienes, lo instala automáticamente en 5 segundos. |
+| **¿Qué drivers de NVIDIA necesito?** | Simplemente tener los **drivers normales de tu tarjeta gráfica NVIDIA actualizados** (los Game Ready Drivers que actualizas desde la app de [NVIDIA GeForce Experience](https://www.nvidia.com/es-la/geforce/geforce-experience/) o [NVIDIA App](https://www.nvidia.com/es-la/software/nvidia-app/)). **NO** necesitas instalar CUDA Toolkit, ni C++, ni Visual Studio. |
+| **¿Y si mi PC tiene tarjeta gráfica AMD, Intel o no tiene NVIDIA?** | **Funciona igual.** Si el programa no detecta una tarjeta NVIDIA compatible, se activa automáticamente el modo CPU de Whisper sin dar errores. |
+| **¿Qué pasa si solo tengo Microsoft Edge instalado?** | **Funciona directamente.** El programa busca primero Firefox, y si no lo tienes, usa de forma nativa el **Microsoft Edge** que ya viene preinstalado en Windows 10 y 11. |
+| **¿Puedo usarlo mientras hablo por Discord?** | **SÍ.** Windows permite que varias aplicaciones escuchen tu micrófono al mismo tiempo. Puedes estar en llamada con tu escuadrón y tu copiloto te escuchará en paralelo. |
+| **¿Cobra dinero la clave de Google Gemini?** | **NO.** El plan gratuito (*Free Tier*) de Google AI Studio ofrece hasta 15 consultas por minuto y 1.000.000 de tokens por minuto **sin solicitar tarjeta de crédito** ($0.00 USD). |
+
+---
+
+## 🧭 Guía de Instalación Paso a Paso (Para Gamers)
+
+Sigue estos 3 sencillos pasos:
 
 ### Paso 1: Descargar el proyecto
 1. En esta página de GitHub, haz clic en el botón verde **Code** (arriba a la derecha).
 2. Selecciona **Download ZIP**.
-3. Descomprime el archivo descargado en cualquier carpeta de tu preferencia (por ejemplo en tus `Documentos`).
+3. Descomprime la carpeta en cualquier lugar de tu PC (por ejemplo, en tus `Documentos`).
 
 ---
 
-### Paso 2: Obtener tu clave gratuita de Google Gemini (Free Tier)
+### Paso 2: Obtener tu Clave Gratuita de Google Gemini (Free Tier)
 
-Google ofrece acceso a sus modelos más rápidos (Gemini 2.5 Flash y 3.1 Flash) de forma **100% gratuita** y sin pedirte tarjeta de crédito.
+Para que el copiloto pueda razonar tus preguntas y ver tu pantalla, utiliza la inteligencia artificial de Google Gemini en su nivel gratuito.
 
 1. Abre tu navegador e ingresa a: **[https://aistudio.google.com](https://aistudio.google.com)**
-2. Inicia sesión con cualquier cuenta de Google (tu correo Gmail habitual).
-3. En la barra lateral o superior, haz clic en el botón azul **"Get API key"** (Obtener clave de API).
+2. Inicia sesión con cualquier cuenta de Google normal (tu correo `@gmail.com`).
+3. En la esquina superior izquierda o central, haz clic en el botón azul **"Get API key"** (o "Crear clave de API").
 4. Haz clic en **"Create API key in new project"** (Crear clave de API en un nuevo proyecto).
-5. Se generará un código largo que empieza por `AIzaSy...`. Haz clic en **Copy** (Copiar) y guárdalo.
-
-> 💡 **¿El Free Tier cuesta dinero o tiene letra pequeña?**  
-> **No.** El nivel gratuito de Google AI Studio te da hasta 15 consultas por minuto y 1.000.000 de tokens por minuto. Para tus partidas diarias es más que suficiente y cuesta **$0.00 USD**.
+5. Aparecerá en pantalla una clave larga que empieza con `AIzaSy...`. Haz clic en **Copy** (Copiar).
 
 ---
 
-### Paso 3: Iniciar con 1 Clic (Configuración Automática)
+### Paso 3: Iniciar el Asistente con 1 Clic
 
-1. Entra a la carpeta descomprimida del proyecto.
+1. Abre la carpeta del proyecto que descomprimiste.
 2. Haz doble clic en el archivo **`iniciar_advisor.bat`** (o `iniciar_coach.bat`).
-3. **Solo la primera vez:** Se abrirá una ventana que te pedirá tu clave de Gemini. Haz clic derecho para pegarla y presiona `ENTER`.
-4. El lanzador se encargará de todo automáticamente:
-   * Instalará el gestor rápido de dependencias (`uv`).
-   * Descargará las librerías necesarias y el modelo de voz Whisper.
-   * Conectará con tu micrófono y tarjeta gráfica.
-
-¡Listo! Cuando veas el mensaje `🎙️ [MODO CONTINUO VAD ACTIVO] Escuchando tu micrófono...`, tu copiloto ya está en guardia.
-
----
-
-### Paso 4: ¿Cómo usarlo mientras juegas?
-
-1. **Juega en modo Ventana sin bordes:** En los ajustes gráficos de tu juego, selecciona *"Ventana sin bordes"* (*Borderless Windowed*) para que Windows permita capturar imágenes limpiamente.
-2. **Habla por tu micrófono:**
-   * **Modo Manos Libres (Por defecto):** Simplemente haz tu pregunta en voz alta por el micrófono (ej: *"¿Qué balas uso para farmear?"* o *"¿Vale la pena lootear este objeto?"*). El coach detectará tu voz, procesará la duda y te responderá hablando directamente a tus auriculares.
-   * **Push-to-Talk (Opcional):** Si prefieres activar la escucha manteniendo una tecla, puedes presionar **`F9`**.
-3. **Reportes Visuales en el Segundo Monitor:**
-   * Si tienes dos pantallas, coloca tu juego en la pantalla principal (DISPLAY1) y deja la pantalla secundaria (DISPLAY2) visible.
-   * Cada vez que pidas una comparativa de daño, precios o balance de armas, el copiloto generará una tabla interactiva con gráficos y la **abrirá y maximizará automáticamente en tu segundo monitor** sin tapar tu juego ni hacer parpadear la barra de tareas.
-4. **Para cerrar el copiloto:**
-   * Haz doble clic en **`detener_advisor.bat`** o presiona `Ctrl+C` en la ventana negra. Todos los procesos y micrófonos se cerrarán limpiamente.
+3. **Solo la primera vez:** La ventana te pedirá tu clave de Gemini. Haz clic derecho para pegarla y presiona `ENTER`.
+4. El programa instalará todo automáticamente en segundo plano. Cuando veas el mensaje:
+   ```text
+   🎙️ [MODO CONTINUO VAD ACTIVO] Escuchando tu micrófono...
+   ```
+   ¡Ya está listo para jugar!
 
 ---
 
-## 🖥️ Requisitos de Sistema
+## 🎮 ¿Cómo interactuar con el Copiloto mientras juegas?
+
+1. **Ajuste en tu juego (Importante):**  
+   Configura tu juego en modo **Ventana sin bordes** (*Borderless Windowed*). Esto permite que Windows capture fotogramas limpiamente sin interferir con el juego ni activar alertas de anti-cheat.
+2. **Haz tus preguntas por el micrófono:**
+   * **Modo Manos Libres (Por defecto):** Habla con naturalidad en cualquier momento (ej: *"¿Qué balas me recomiendas para farmear?"* o *"Mira mi pantalla, ¿vale la pena este loot?"*). El copiloto detectará tu voz, analizará la situación y te responderá hablando directamente a tus auriculares.
+   * **Modo Push-to-Talk (Opcional):** Si prefieres presionar una tecla para hablar, mantén presionado **`F9`** mientras formulas tu pregunta.
+3. **Tablas y Gráficos en tu Segundo Monitor:**
+   * Si tienes dos pantallas, mantén el juego en la pantalla principal (DISPLAY1) y tu pantalla secundaria (DISPLAY2) visible.
+   * Cada vez que tu consulta involucre números, comparativas de daño de munición o valor de objetos, el copiloto generará un dashboard interactivo en HTML con **Chart.js** y lo **abrirá y maximizará automáticamente en tu segundo monitor** sin desviar el foco de tu juego ni hacer parpadear la barra de tareas.
+4. **Para apagar el copiloto al terminar:**
+   * Haz doble clic en **`detener_advisor.bat`** o presiona `Ctrl+C` en la consola. Todos los procesos de audio, GPU y micrófono se cerrarán inmediatamente sin dejar procesos colgados.
+
+---
+
+## 🖥️ Requisitos de Sistema Detallados
 
 ### Requisitos Mínimos:
 * **Sistema Operativo:** Windows 10 o Windows 11 (64-bit).
 * **Procesador (CPU):** Intel Core i5 / AMD Ryzen 5 o superior.
-* **Memoria RAM:** 8 GB mínimo (16 GB recomendado para multitarea con juegos).
-* **Micrófono:** Cualquier micrófono USB, headset o integrado (compatible con Discord y Nvidia Broadcast).
-* **Navegador Web:** 
-  * **Mozilla Firefox** (Recomendado por ser ultraligero y libre de plugins pesados).
-  * **Microsoft Edge** (Viene preinstalado con Windows 10/11; el programa lo detecta automáticamente como respaldo).
-  * **Google Chrome**.
-* **Conexión a Internet:** Para comunicarse con la API de Gemini y síntesis de voz.
+* **Memoria RAM:** 8 GB (16 GB recomendado si juegas títulos pesados).
+* **Micrófono:** Cualquier micrófono USB, headset o de escritorio (compatible con Corsair, HyperX, Logitech, Razer, etc.).
+* **Navegador Web:** Mozilla Firefox, Microsoft Edge (nativo) o Google Chrome.
+* **Conexión a Internet:** Para conectarse a la API de Gemini.
 
-### Requisitos Recomendados (Máximo Rendimiento):
-* **Tarjeta Gráfica (GPU):** NVIDIA GeForce RTX (Serie 30 o 40, ej: RTX 3060, 4070 Ti, 4080) con soporte CUDA. Permite ejecutar el modelo local `large-v3-turbo` en `float16` con transcripción casi instantánea. *(Si no tienes tarjeta NVIDIA, el programa funciona automáticamente usando tu CPU).*
-* **Configuración de Pantalla:** Dos monitores:
-  * **Monitor 1 (Principal):** 1440p (2560x1440) o 1080p para el juego.
-  * **Monitor 2 (Secundario):** 1080p para visualizar las tablas, gráficas de daño y estadísticas tácticas.
+### Requisitos Recomendados (Máxima Velocidad y Cero Latencia):
+* **Tarjeta Gráfica (GPU):** NVIDIA GeForce RTX serie 30 o 40 (RTX 3060, 4060, 4070 Ti, 4080, etc.) con los últimos [Game Ready Drivers de NVIDIA](https://www.nvidia.com/Download/index.aspx). Ejecuta el modelo Whisper `large-v3-turbo` en `float16` con transcripción instantánea en GPU.
+* **Monitores:** Configuración dual:
+  * **Monitor 1 (Principal):** 1440p o 1080p para el videojuego.
+  * **Monitor 2 (Secundario):** 1080p para visualizar las tablas tácticas y gráficos interactivos.
 
 ---
 
-## ❓ Preguntas Frecuentes (FAQ)
+## 🛡️ Seguridad Anti-Cheat (ACE, Vanguard, Easy Anti-Cheat)
 
-### ¿Qué pasa si solo tengo instalado Microsoft Edge en mi PC?
-**Funciona a la perfección.** El programa incluye un sistema de detección inteligente:
-1. Intenta abrir **Firefox** (si está instalado).
-2. Si no tienes Firefox, pasa automáticamente a **Microsoft Edge**, el cual viene integrado en todos los Windows 10 y 11.
-3. El programa detecta la ruta oficial de Edge, abre el reporte en una ventana limpia, lo traslada a tu monitor secundario y lo maximiza automáticamente. No tienes que configurar nada.
-
-### ¿Puedo usarlo mientras hablo por Discord o uso otras apps de micrófono?
-**Sí.** El audio de Windows permite que múltiples programas escuchen el mismo dispositivo de entrada al mismo tiempo. Puedes estar en llamada con tu escuadrón en Discord y tu copiloto te escuchará sin interferir en la voz de tus compañeros.
-
-### ¿Puede darme baneo el Anti-Cheat del juego?
-**No.** El copiloto opera 100% a nivel de sistema operativo:
-* No inyecta DLLs ni código dentro del proceso del juego.
-* No lee ni modifica la memoria RAM del juego.
-* Toma capturas del escritorio de Windows mediante la API estándar de gráficos (Windows Desktop GDI / Desktop Duplication), exactamente igual a cómo lo hace Discord al compartir pantalla o el software de NVIDIA GeForce Experience.
+* **100% externo al juego:** Opera exclusivamente a nivel de escritorio de Windows mediante la API estándar de duplicación de escritorio (Windows Desktop GDI).
+* **Cero inyección:** No inyecta DLLs, no lee la memoria RAM del juego (`.exe`), ni dibuja overlays invasivos sobre la ventana del juego. Funciona exactamente de la misma manera que Discord al compartir pantalla o NVIDIA ShadowPlay al grabar.
 
 ---
 
@@ -115,16 +113,16 @@ El proyecto está diseñado de forma modular para que puedas crear tu propio cop
 
 ---
 
-## ⚙️ Personalización Avanzada (`config.yaml`)
+## ⚙️ Personalización de Ajustes (`config.yaml`)
 
-Si deseas cambiar ajustes más profundos, abre el archivo `config.yaml` con el Bloc de notas:
+Si deseas personalizar teclas, micrófonos o voces, abre `config.yaml` con el Bloc de notas:
 
 ```yaml
 listener:
   mode: "continuous"        # "continuous" (manos libres), "ptt" (pulsar tecla) o "hybrid"
-  ptt_key: "f9"             # Tecla de Push-to-Talk
+  ptt_key: "f9"             # Tecla para hablar si usas PTT
   vad_threshold: 0.012      # Sensibilidad del micro (0.010 a 0.020)
-  silence_duration_sec: 1.0 # Segundos de silencio para enviar la pregunta
+  silence_duration_sec: 1.0 # Segundos de silencio para enviar tu pregunta
 
 speaker:
   voice: "es-CO-SalomeNeural" # Voz de Salomé (Colombia). Otras: es-ES-ElviraNeural, es-MX-DaliaNeural
