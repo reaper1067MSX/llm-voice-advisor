@@ -5,6 +5,7 @@ HTML report generation via tool calls, and token-efficient rolling text history.
 """
 
 from dataclasses import dataclass, field
+import json
 import os
 from pathlib import Path
 import time
@@ -225,6 +226,59 @@ class Brain:
 
         return base_prompt
 
+    def try_fast_path(self, prompt: str) -> Optional[CoachResponse]:
+        """Attempt immediate zero-LLM local factual retrieval (< 2ms) for direct stat queries."""
+        if not self.rag or not prompt:
+            return None
+
+        p_lower = prompt.lower().strip()
+        stat_triggers = [
+            "qué penetración", "que penetracion", "cuánta penetración", "cuanta penetracion",
+            "cuánto daño", "cuanto dano", "cuánto de daño", "cuanto de dano",
+            "qué daño", "que dano", "qué tier", "que tier", "de qué tier", "de que tier",
+            "cuánto vale", "cuanto vale", "a cuánto se vende", "a cuanto se vende",
+            "precio de", "estadísticas de", "estadisticas de", "stats de"
+        ]
+
+        if not any(trigger in p_lower for trigger in stat_triggers):
+            return None
+
+        # Search RAG with highest precision
+        game_name = getattr(self.config.gemini, "game", "generic") or "generic"
+        results = self.rag.search(prompt, game=game_name, limit=1)
+        if not results:
+            return None
+
+        item = results[0]
+        data = {}
+        try:
+            data = json.loads(item["data_json"])
+        except Exception:
+            pass
+
+        title = item["title"]
+        summary = item["summary"]
+
+        if "penetration" in data and "damage" in data:
+            tier_str = f", nivel Tier {data.get('tier', '?')}" if "tier" in data else ""
+            spoken = f"La {title} tiene {data['penetration']} de penetración y {data['damage']} de daño base{tier_str}."
+        elif "approx_value" in data:
+            spoken = f"El {title} tiene un valor estimado de mercado de {data['approx_value']:,} Koens."
+        else:
+            spoken = summary
+
+        # Append to history
+        self.history.append(Turn(role="user", text=prompt))
+        self.history.append(Turn(role="coach", text=spoken))
+
+        return CoachResponse(
+            spoken_text=spoken,
+            report_path=None,
+            input_tokens=0,
+            output_tokens=0,
+            latency_ms=1.5,
+        )
+
     def ask(
         self,
         prompt: str,
@@ -233,6 +287,13 @@ class Brain:
     ) -> CoachResponse:
         """Send multimodal or text query to LLM provider with tools and rolling history."""
         start_time = time.perf_counter()
+
+        # Fast-Path check: resolve exact numerical facts locally in < 2ms without LLM latency
+        if not image_bytes and not crop_bytes:
+            fast_reply = self.try_fast_path(prompt)
+            if fast_reply:
+                return fast_reply
+
         generated_report_path: Optional[str] = None
 
         def create_report_tool(title: str, html_body: str) -> str:

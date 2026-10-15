@@ -96,3 +96,59 @@ def test_brain_integrates_rag_facts(tmp_path: Path):
     history_text = captured_kwargs["history_text"]
     assert any("BASE DE DATOS TÁCTICA VERIFICADA" in line for line in history_text)
     assert any("Bala 7.62x51mm M80" in line for line in history_text)
+
+
+def test_brain_fast_path_zero_llm(tmp_path: Path):
+    from abi_coach.brain import Brain
+    from abi_coach.config import AppConfig
+
+    class UnreachableProvider:
+        def generate(self, *args, **kwargs):
+            raise AssertionError("LLM Provider should NOT be called for exact stat queries!")
+
+    db_file = tmp_path / "brain_fastpath.sqlite3"
+    db = DatabaseManager(str(db_file))
+    rag = KnowledgeRAG(db, default_game="abi")
+
+    cfg = AppConfig()
+    cfg.gemini.game = "abi"
+
+    brain = Brain(config=cfg, provider=UnreachableProvider(), rag=rag)
+    res = brain.ask("¿Qué penetración tiene la bala M80?")
+
+    assert res is not None
+    assert "44 de penetración" in res.spoken_text
+    assert "76 de daño base" in res.spoken_text
+    assert res.input_tokens == 0
+    assert len(brain.history) == 2
+    assert brain.history[0].role == "user"
+    assert brain.history[1].role == "coach"
+
+
+def test_create_tactical_dashboard(tmp_path: Path):
+    from abi_coach.reports import create_tactical_dashboard
+
+    memories = [
+        {"topic": "loadouts", "feature": "weapon", "title": "FAL Principal", "content": "Mira 1x/4x", "pinned": True}
+    ]
+    knowledge = [
+        {"title": "Bala 7.62x51mm M80", "data_json": '{"tier": 4, "penetration": 44, "damage": 76}', "summary": "Balanceada"}
+    ]
+
+    out_dir = tmp_path / "reports"
+    dashboard_path = create_tactical_dashboard(
+        memory_items=memories,
+        knowledge_items=knowledge,
+        game="abi",
+        output_dir=str(out_dir),
+        auto_open=False,
+    )
+
+    assert dashboard_path.exists()
+    content = dashboard_path.read_text(encoding="utf-8")
+    assert "Dashboard Táctico - ABI" in content
+    assert "FAL Principal" in content
+    assert "Bala 7.62x51mm M80" in content
+    assert "dashboardChart" in content
+    assert "Content-Security-Policy" in content
+
