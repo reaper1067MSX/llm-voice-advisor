@@ -124,3 +124,19 @@ def test_find_browser_order():
         assert Path(b_path_edge).exists()
 
 
+def test_history_slice_bounds():
+    from abi_coach.brain import Turn
+
+    history = [Turn(role="user" if i % 2 == 0 else "coach", text=f"turn{i}") for i in range(10)]
+
+    def compute_slice(hist, max_turns: int):
+        mt = max(0, max_turns)
+        return hist[-mt * 2:] if mt > 0 else []
+
+    assert len(compute_slice(history, 0)) == 0
+    assert len(compute_slice(history, 1)) == 2
+    assert len(compute_slice(history, 2)) == 4
+    assert compute_slice(history, 2)[0].text == "turn6"
+
+
+

@@ -179,22 +179,38 @@ class Brain:
 
 
         contents: List[Any] = []
+        media_res = self._get_media_resolution()
 
         # 1. Add rolling text history (without old images to save tokens)
-        for turn in self.history[-self.config.history.max_turns:]:
+        max_turns = max(0, getattr(self.config.history, "max_turns", 5))
+        if max_turns > 0:
+            entries_to_take = max_turns * 2
+            history_slice = self.history[-entries_to_take:]
+        else:
+            history_slice = []
+
+        for turn in history_slice:
             contents.append(f"{turn.role.upper()}: {turn.text}")
 
         # 2. Add current image(s) if provided
         if image_bytes:
             contents.append(
-                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type="image/jpeg",
+                    media_resolution=media_res,
+                )
             )
 
         if crop_bytes:
             for region_name, crop_data in crop_bytes.items():
                 contents.append(f"[Recorte detallado nativo de región: {region_name}]")
                 contents.append(
-                    types.Part.from_bytes(data=crop_data, mime_type="image/jpeg")
+                    types.Part.from_bytes(
+                        data=crop_data,
+                        mime_type="image/jpeg",
+                        media_resolution=media_res,
+                    )
                 )
 
         # 3. Add current user question
@@ -203,6 +219,7 @@ class Brain:
         gen_config = types.GenerateContentConfig(
             system_instruction=self.get_system_instruction(),
             temperature=self.config.gemini.temperature,
+            media_resolution=media_res,
             tools=[create_report_tool],
         )
 
@@ -217,6 +234,8 @@ class Brain:
         # Update history
         self.history.append(Turn(role="user", text=prompt))
         self.history.append(Turn(role="coach", text=spoken_text))
+        if len(self.history) > 50:
+            self.history = self.history[-50:]
 
         # Token usage if available
         input_tokens = None
