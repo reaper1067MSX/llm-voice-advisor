@@ -106,14 +106,19 @@ Para que el copiloto pueda razonar tus preguntas y ver tu pantalla, utiliza la i
 
 ## 🚀 Inicio Rápido con 1 Clic
 
-Una vez instalado:
-1. Haz doble clic en **`iniciar_advisor.bat`** (o `iniciar_coach.bat`).
-2. Cuando veas en la consola:
-   ```text
-   🎙️ [MODO CONTINUO VAD ACTIVO] Escuchando tu micrófono...
-   ```
-   ¡Ya puedes entrar a tu partida y hablarle con naturalidad!
-3. Para apagarlo al terminar de jugar, haz doble clic en **`detener_advisor.bat`** o presiona `Ctrl+C`.
+Una vez instalado, tienes dos lanzadores listos para usar:
+
+* **🎮 Copiloto General (Cualquier Juego):** Haz doble clic en **`game_advisor.bat`**
+* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Haz doble clic en **`iniciar_coach_abi.bat`**
+*(Nota: `iniciar_advisor.bat` e `iniciar_coach.bat` siguen funcionando como accesos directos).*
+
+Cuando veas en la consola:
+```text
+🎙️ [MODO CONTINUO VAD ACTIVO] Escuchando tu micrófono...
+```
+¡Ya puedes entrar a tu partida y hablarle con total naturalidad!
+
+Para apagar el copiloto al terminar de jugar, haz doble clic en **`detener_game_advisor.bat`** (o `detener_coach_abi.bat`) o presiona `Ctrl+C` en la consola.
 
 ---
 

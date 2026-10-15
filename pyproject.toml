@@ -25,6 +25,7 @@ dependencies = [
 ]
 
 [project.scripts]
+game-advisor = "abi_coach.main:main"
 llm-voice-advisor = "abi_coach.main:main"
 abi-coach = "abi_coach.main:main"
 
