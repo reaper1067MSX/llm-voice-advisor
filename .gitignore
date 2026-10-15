@@ -10,3 +10,5 @@ reports/*.html
 .pytest_cache/
 .coverage
 htmlcov/
+data/*.sqlite3*
+data/*.db

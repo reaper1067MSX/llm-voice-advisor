@@ -13,6 +13,8 @@ from google import genai
 from google.genai import types
 
 from abi_coach.config import AppConfig
+from abi_coach.db import DatabaseManager
+from abi_coach.memory import CompanionMemory, MemoryItem
 from abi_coach.providers.base import LLMProvider
 from abi_coach.providers.factory import create_llm_provider
 from abi_coach.reports import create_html_report
@@ -157,6 +159,8 @@ class Brain:
         config: AppConfig,
         report_opener: Optional[Callable[[str], Any]] = None,
         provider: Optional[LLMProvider] = None,
+        memory: Optional[CompanionMemory] = None,
+        db: Optional[DatabaseManager] = None,
     ):
         self.config = config
         self.report_opener = report_opener
@@ -166,6 +170,14 @@ class Brain:
             self.provider = provider
         else:
             self.provider = create_llm_provider(config)
+
+        if memory is not None:
+            self.memory = memory
+        else:
+            database = db or DatabaseManager()
+            self.memory = CompanionMemory(
+                database, default_game=getattr(config.gemini, "game", "generic")
+            )
 
     @property
     def client(self) -> Any:
@@ -182,10 +194,18 @@ class Brain:
         return types.MediaResolution.MEDIA_RESOLUTION_HIGH
 
     def get_system_instruction(self) -> str:
-        """Retorna la instrucción de sistema adecuada según el preset de juego o personalización."""
+        """Retorna la instrucción de sistema adecuada según el preset de juego o personalización, enriquecida con memoria persistente."""
         if self.config.gemini.system_instruction:
-            return self.config.gemini.system_instruction
-        return load_preset(self.config.gemini.game or "")
+            base_prompt = self.config.gemini.system_instruction
+        else:
+            base_prompt = load_preset(self.config.gemini.game or "")
+
+        if self.memory:
+            profile_context = self.memory.format_profile_for_prompt(game=self.config.gemini.game)
+            if profile_context:
+                return f"{base_prompt}\n{profile_context}"
+
+        return base_prompt
 
     def ask(
         self,
