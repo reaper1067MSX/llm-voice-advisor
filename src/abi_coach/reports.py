@@ -362,30 +362,37 @@ def _bring_browser_to_front_worker(browser_type: str, title_query: str = "") -> 
         # 3. Ensure maximized
         user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
 
-        # 4. Bring to foreground without Windows taskbar yellow flashing:
-        # Topmost flip forces window to top of the screen Z-order
-        HWND_TOPMOST = -1
-        HWND_NOTOPMOST = -2
-        SWP_NOMOVE = 0x0002
-        SWP_NOSIZE = 0x0001
-        SWP_SHOWWINDOW = 0x0040
+        if focus_browser:
+            # Topmost flip forces window to top of the screen Z-order
+            HWND_TOPMOST = -1
+            HWND_NOTOPMOST = -2
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_SHOWWINDOW = 0x0040
 
-        user32.SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
-        time.sleep(0.04)
-        user32.SetWindowPos(target_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
-        user32.BringWindowToTop(target_hwnd)
+            user32.SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+            time.sleep(0.04)
+            user32.SetWindowPos(target_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+            user32.BringWindowToTop(target_hwnd)
 
-        # Bypass Windows 11 ForegroundLockTimeout via harmless Alt key
-        try:
-            import win32com.client
-            shell = win32com.client.Dispatch("WScript.Shell")
-            shell.SendKeys("%")
-        except Exception:
-            user32.keybd_event(0x12, 0, 0, 0)
-            user32.keybd_event(0x12, 0, 2, 0)
+            # Bypass Windows 11 ForegroundLockTimeout via harmless Alt key
+            try:
+                import win32com.client
+                shell = win32com.client.Dispatch("WScript.Shell")
+                shell.SendKeys("%")
+            except Exception:
+                user32.keybd_event(0x12, 0, 0, 0)
+                user32.keybd_event(0x12, 0, 2, 0)
 
-        user32.SetForegroundWindow(target_hwnd)
-        user32.SwitchToThisWindow(target_hwnd, True)
+            user32.SetForegroundWindow(target_hwnd)
+            user32.SwitchToThisWindow(target_hwnd, True)
+        else:
+            # Position without stealing input focus from active game
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_SHOWWINDOW = 0x0040
+            SWP_NOACTIVATE = 0x0010
+            user32.SetWindowPos(target_hwnd, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE)
 
         mon_label = "DISPLAY2 (Secundaria)" if sec_bounds else "Pantalla principal"
         browser_names = {
@@ -400,7 +407,12 @@ def _bring_browser_to_front_worker(browser_type: str, title_query: str = "") -> 
         pass
 
 
-def open_and_maximize_in_browser(file_path: str, title: str = "", preferred: str = "firefox") -> None:
+def open_and_maximize_in_browser(
+    file_path: str,
+    title: str = "",
+    preferred: str = "firefox",
+    focus_browser: bool = False,
+) -> None:
     """Open file in preferred browser (Firefox > Edge > Chrome), position and maximize on secondary monitor."""
     browser_type, browser_path = _find_browser(preferred=preferred)
 
@@ -420,7 +432,7 @@ def open_and_maximize_in_browser(file_path: str, title: str = "", preferred: str
             # Fire and forget background worker for window raising
             t = threading.Thread(
                 target=_bring_browser_to_front_worker,
-                args=(browser_type, title),
+                args=(browser_type, title, focus_browser),
                 daemon=True,
             )
             t.start()
@@ -446,6 +458,7 @@ def create_html_report(
     auto_open: bool = True,
     opener: Optional[Callable[[str], Any]] = None,
     preferred_browser: str = "firefox",
+    focus_browser: bool = False,
 ) -> Path:
     """Generate a styled HTML report and open it maximized in the preferred browser."""
     import html
@@ -480,7 +493,12 @@ def create_html_report(
             except Exception:
                 pass
         else:
-            open_and_maximize_in_browser(resolved_str, title=title, preferred=preferred_browser)
+            open_and_maximize_in_browser(
+                resolved_str,
+                title=title,
+                preferred=preferred_browser,
+                focus_browser=focus_browser,
+            )
 
     return file_path
 

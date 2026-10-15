@@ -172,6 +172,7 @@ class Brain:
                 auto_open=self.config.reports.auto_open_browser,
                 opener=self.report_opener,
                 preferred_browser=self.config.reports.preferred_browser,
+                focus_browser=getattr(self.config.reports, "focus_browser", False),
             )
             generated_report_path = str(path)
             return f"Informe HTML creado exitosamente en {path} y mostrado en pantalla."

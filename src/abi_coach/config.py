@@ -68,6 +68,7 @@ class ReportConfig:
     output_dir: str = "reports"
     auto_open_browser: bool = True
     preferred_browser: str = "firefox"  # "firefox", "edge", or "chrome"
+    focus_browser: bool = False
 
 
 
@@ -165,6 +166,7 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         output_dir=str(rep_raw.get("output_dir", "reports")),
         auto_open_browser=bool(rep_raw.get("auto_open_browser", True)),
         preferred_browser=str(rep_raw.get("preferred_browser", "firefox")).lower(),
+        focus_browser=bool(rep_raw.get("focus_browser", False)),
     )
 
 

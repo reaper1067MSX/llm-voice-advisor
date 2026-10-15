@@ -78,6 +78,8 @@ reports:
   output_dir: "reports"
   # Abrir automáticamente el navegador con la tabla/gráfica interactiva
   auto_open_browser: true
+  # Si es false, posiciona el navegador en DISPLAY2 sin robar el foco del juego ni enviar teclas
+  focus_browser: false
   # Navegador preferido para visualizar reportes en DISPLAY2:
   #   "firefox" -> Mozilla Firefox (Recomendado: ultraligero, sin extensiones pesadas, rápido)
   #   "edge"    -> Microsoft Edge (Nativo de Windows 11)
