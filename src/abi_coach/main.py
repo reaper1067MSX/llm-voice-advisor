@@ -174,8 +174,8 @@ def run_interactive_loop(config) -> None:
         title_str = "🎯 ABI TACTICAL COACH - Arena Breakout: Infinite"
         game_display = "Arena Breakout: Infinite (S7 Balística & Alijo)"
     else:
-        title_str = "🎮 GAME ADVISOR - AI Gaming Voice Co-pilot"
-        game_display = "Universal / Multijuego (Análisis en vivo de pantalla)"
+        title_str = "🎮 GAME ADVISOR - AI Gaming Voice Co-pilot & Configurator"
+        game_display = "Universal / Multijuego (Modo Advisor Onboarding)"
 
     active_provider = getattr(config.llm, "provider", "gemini").lower()
     active_model = config.nvidia.model if active_provider == "nvidia" else config.gemini.model
@@ -263,11 +263,16 @@ def run_interactive_loop(config) -> None:
         print(f"👉 Mantén presionado [{target_key}] mientras hablas y suéltalo al terminar.")
     print("   • Al detectar voz: bip agudo + captura de pantalla + grabación.")
     print("   • Al callar: bip grave + transcripción GPU + análisis Gemini + respuesta por voz.")
-    print("   • Para salir: Presiona Ctrl+C o cierra la ventana (liberación total de memoria).", flush=True)
+    print("   • Para salir: Presiona Ctrl+C o cierra la ventana (liberación total de memoria).")
+    if game_lower not in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
+        print("   • 💡 Conmutador en caliente: Di 'Vamos a jugar [Juego]' para auto-configurar y activar otro juego.", flush=True)
     print("=" * 66 + "\n", flush=True)
 
     # Vocal greeting to confirm sound output and indicate readiness
-    greeting = "Hola, soy tu coach táctico. Estoy listo y atento a tu partida. Hazme cualquier pregunta."
+    if game_lower in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
+        greeting = "Hola, soy tu coach táctico de Arena Breakout. Estoy listo y atento a tu partida. Hazme cualquier pregunta."
+    else:
+        greeting = "Hola, soy tu Game Advisor. Estoy listo para cualquier juego. Di 'Vamos a jugar' y el nombre del juego para configurarlo en caliente."
     print("🔊 Saludando por voz en tus auriculares...", flush=True)
     listener.pause_listening()
     try:

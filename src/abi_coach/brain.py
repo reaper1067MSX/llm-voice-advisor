@@ -8,11 +8,13 @@ from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional
 from google import genai
 from google.genai import types
 
+from abi_coach.archetypes import ArchetypeManager, TopicContext
 from abi_coach.config import AppConfig
 from abi_coach.db import DatabaseManager
 from abi_coach.memory import CompanionMemory, MemoryItem
@@ -21,6 +23,7 @@ from abi_coach.providers.factory import create_llm_provider
 from abi_coach.rag import KnowledgeItem, KnowledgeRAG
 from abi_coach.reconciler import KnowledgeReconciler, ReconciliationDiff
 from abi_coach.reports import create_html_report
+from abi_coach.scaffolding import ArchetypeScaffolder
 
 
 ABI_SYSTEM_INSTRUCTION = """Eres 'ABI Coach', un copiloto táctico y analista de élite para el videojuego 'Arena Breakout: Infinite' (PC).
@@ -176,27 +179,53 @@ class Brain:
         else:
             self.provider = create_llm_provider(config)
 
+        if db is not None:
+            self.db = db
+        elif memory and hasattr(memory, "db"):
+            self.db = memory.db
+        elif rag and hasattr(rag, "db"):
+            self.db = rag.db
+        elif reconciler and hasattr(reconciler, "db"):
+            self.db = reconciler.db
+        else:
+            self.db = DatabaseManager()
+
+        self.archetype_mgr = ArchetypeManager(self.db)
+        self.scaffolder = ArchetypeScaffolder(self.db, self.archetype_mgr)
+        self.active_context_id = getattr(config.gemini, "game", "generic") or "generic"
+        self._last_report_path: Optional[str] = None
+
         if memory is not None:
             self.memory = memory
         else:
-            database = db or DatabaseManager()
             self.memory = CompanionMemory(
-                database, default_game=getattr(config.gemini, "game", "generic")
+                self.db, default_game=self.active_context_id
             )
 
         if rag is not None:
             self.rag = rag
         else:
-            database = db or (self.memory.db if self.memory else DatabaseManager())
             self.rag = KnowledgeRAG(
-                database, default_game=getattr(config.gemini, "game", "generic")
+                self.db, default_game=self.active_context_id
             )
 
         if reconciler is not None:
             self.reconciler = reconciler
         else:
-            database = db or (self.rag.db if self.rag else DatabaseManager())
-            self.reconciler = KnowledgeReconciler(database, self.rag)
+            self.reconciler = KnowledgeReconciler(self.db, self.rag)
+
+        # Bootstrap active context if missing in DB
+        if not self.archetype_mgr.get_context(self.active_context_id):
+            initial_dname = (
+                "Arena Breakout: Infinite"
+                if self.active_context_id in ("abi", "arena_breakout", "arena_breakout_infinite")
+                else ("Game Advisor Universal" if self.active_context_id == "generic" else None)
+            )
+            self.scaffolder.bootstrap_context(
+                context_id=self.active_context_id,
+                display_name=initial_dname,
+                activate=True,
+            )
 
     @property
     def client(self) -> Any:
@@ -212,15 +241,139 @@ class Brain:
             return types.MediaResolution.MEDIA_RESOLUTION_LOW
         return types.MediaResolution.MEDIA_RESOLUTION_HIGH
 
+    def switch_context(
+        self,
+        new_context_id: str,
+        new_display_name: Optional[str] = None,
+        archetype_id: Optional[str] = None,
+    ) -> TopicContext:
+        """Switch active gaming topic context dynamically in RAM and DB without restart."""
+        cid = new_context_id.strip().lower()
+        if not cid:
+            cid = "generic"
+
+        ctx = self.archetype_mgr.get_context(cid)
+        if ctx is None:
+            ctx = self.scaffolder.bootstrap_context(
+                context_id=cid,
+                archetype_id=archetype_id,
+                display_name=new_display_name,
+                activate=True,
+            )
+        else:
+            ctx = self.archetype_mgr.create_context(
+                context_id=ctx.context_id,
+                archetype_id=ctx.archetype_id,
+                display_name=new_display_name or ctx.display_name,
+                config=ctx.config,
+                version=ctx.current_version,
+                activate=True,
+            )
+
+        self.active_context_id = cid
+        self.config.gemini.game = cid
+        if self.memory:
+            self.memory.default_game = cid
+        if self.rag:
+            self.rag.default_game = cid
+            if hasattr(self.rag, "cache") and self.rag.cache:
+                self.rag.cache.clear()
+
+        # Update rolling history with a transition marker
+        self.history.append(
+            Turn(role="system", text=f"Contexto cambiado a {ctx.display_name} ({ctx.archetype_id}).")
+        )
+
+        # Render and display live dashboard on DISPLAY2
+        arch = self.archetype_mgr.get_archetype(ctx.archetype_id)
+        arch_title = arch.display_name if arch else ctx.archetype_id
+        html_body = f"""
+        <div class="card">
+            <h2>🎮 Contexto Activo: {ctx.display_name}</h2>
+            <div class="badge-row" style="margin-top: 10px; margin-bottom: 15px;">
+                <span class="badge badge-purple">Arquetipo: {arch_title}</span>
+                <span class="badge badge-blue">Contexto: {ctx.context_id}</span>
+                <span class="badge badge-green">Estado: Conectado</span>
+            </div>
+            <p style="color: #9ca3af; line-height: 1.6;">
+                El motor ha sincronizado las reglas tácticas de <strong>{ctx.display_name}</strong>, activado la memoria dinámica de arquetipo y purgado la caché L1 en RAM.
+            </p>
+        </div>
+        """
+        try:
+            report_path = create_html_report(
+                title=f"Dashboard: {ctx.display_name}",
+                html_body=html_body,
+                output_dir=self.config.reports.output_dir,
+                auto_open=self.config.reports.auto_open_browser,
+                opener=self.report_opener,
+                preferred_browser=self.config.reports.preferred_browser,
+                focus_browser=getattr(self.config.reports, "focus_browser", False),
+            )
+            self._last_report_path = str(report_path)
+        except Exception:
+            self._last_report_path = None
+
+        return ctx
+
+    def detect_context_switch_request(self, prompt: str) -> Optional[tuple[str, str]]:
+        """Detect verbal requests to switch gaming context.
+
+        Returns (context_id, display_name) or None.
+        """
+        p = prompt.strip().lower()
+
+        patterns = [
+            r"(?:vamos a jugar|vamos a darle a|juguemos a|jugar a)\s+([a-zA-Z0-9_\s:-]+)",
+            r"(?:cambiar a|cambia a|cambiemos a|cambiar al juego|cambia al juego)\s+([a-zA-Z0-9_\s:-]+)",
+            r"(?:cambiar contexto a|cambia contexto a|conmutar a)\s+([a-zA-Z0-9_\s:-]+)",
+            r"(?:inicia contexto para|iniciar contexto para|inicia el contexto de)\s+([a-zA-Z0-9_\s:-]+)",
+            r"(?:pon el juego|cargar juego|cambia de juego a)\s+([a-zA-Z0-9_\s:-]+)",
+            r"(?:activar modo|cambia a modo|cambiar a modo|modo)\s+(advisor|gen[eé]rico|abi|coach)",
+        ]
+
+        for pat in patterns:
+            m = re.search(pat, p, re.IGNORECASE)
+            if m:
+                raw_target = m.group(1).strip().strip(".?!,")
+                if not raw_target:
+                    continue
+                clean_target = raw_target.lower()
+                if any(x in clean_target for x in ("advisor", "generico", "genérico", "general", "universal")):
+                    return ("generic", "Game Advisor Universal")
+                if clean_target in ("abi", "arena breakout", "arena breakout infinite", "arena breakout: infinite", "coach"):
+                    return ("abi", "Arena Breakout: Infinite")
+
+                cid = re.sub(r"[^a-z0-9]+", "_", clean_target).strip("_")
+                dname = raw_target.title()
+                return (cid, dname)
+
+        return None
+
     def get_system_instruction(self) -> str:
         """Retorna la instrucción de sistema adecuada según el preset de juego o personalización, enriquecida con memoria persistente."""
+        game_id = self.active_context_id or getattr(self.config.gemini, "game", "generic")
         if self.config.gemini.system_instruction:
             base_prompt = self.config.gemini.system_instruction
         else:
-            base_prompt = load_preset(self.config.gemini.game or "")
+            preset_path = Path(__file__).parent / "presets" / f"{game_id}.md"
+            if preset_path.is_file():
+                base_prompt = load_preset(game_id)
+            elif game_id not in ("generic", ""):
+                ctx = self.archetype_mgr.get_context(game_id)
+                if ctx:
+                    arch = self.archetype_mgr.get_archetype(ctx.archetype_id)
+                    if arch and arch.default_system_prompt:
+                        base_prompt = f"Eres un copiloto táctico para '{ctx.display_name}'.\n{arch.default_system_prompt}"
+                    else:
+                        base_prompt = load_preset(game_id)
+                else:
+                    base_prompt = load_preset(game_id)
+            else:
+                base_prompt = load_preset(game_id)
 
         if self.memory:
-            profile_context = self.memory.format_profile_for_prompt(game=self.config.gemini.game)
+            profile_context = self.memory.format_profile_for_prompt(game=game_id)
             if profile_context:
                 return f"{base_prompt}\n{profile_context}"
 
@@ -287,6 +440,28 @@ class Brain:
     ) -> CoachResponse:
         """Send multimodal or text query to LLM provider with tools and rolling history."""
         start_time = time.perf_counter()
+
+        # Context switch check: conmutar juego o modo en caliente
+        switch_info = self.detect_context_switch_request(prompt)
+        if switch_info:
+            cid, dname = switch_info
+            ctx = self.switch_context(cid, dname)
+            arch = self.archetype_mgr.get_archetype(ctx.archetype_id)
+            arch_title = arch.display_name if arch else ctx.archetype_id
+            spoken = (
+                f"Cambié el contexto a {ctx.display_name}. "
+                f"He activado el arquetipo de {arch_title} y sincronizado la memoria táctica. "
+                f"Te abrí el nuevo panel en tu pantalla secundaria."
+            )
+            self.history.append(Turn(role="user", text=prompt))
+            self.history.append(Turn(role="coach", text=spoken))
+            return CoachResponse(
+                spoken_text=spoken,
+                report_path=self._last_report_path,
+                input_tokens=0,
+                output_tokens=0,
+                latency_ms=(time.perf_counter() - start_time) * 1000,
+            )
 
         # Fast-Path check: resolve exact numerical facts locally in < 2ms without LLM latency
         if not image_bytes and not crop_bytes:
