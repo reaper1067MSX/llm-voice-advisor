@@ -24,6 +24,7 @@ from abi_coach.rag import KnowledgeItem, KnowledgeRAG
 from abi_coach.reconciler import KnowledgeReconciler, ReconciliationDiff
 from abi_coach.reports import create_html_report
 from abi_coach.scaffolding import ArchetypeScaffolder
+from abi_coach.metatuning import MetaTuningEngine, MetaTuningResult
 
 
 ABI_SYSTEM_INSTRUCTION = """Eres 'ABI Coach', un copiloto táctico y analista de élite para el videojuego 'Arena Breakout: Infinite' (PC).
@@ -226,6 +227,14 @@ class Brain:
                 display_name=initial_dname,
                 activate=True,
             )
+
+        self.metatuning = MetaTuningEngine(
+            db=self.db,
+            archetype_mgr=self.archetype_mgr,
+            scaffolder=self.scaffolder,
+            config=self.config,
+            report_opener=self.report_opener,
+        )
 
     @property
     def client(self) -> Any:
@@ -458,6 +467,19 @@ class Brain:
             return CoachResponse(
                 spoken_text=spoken,
                 report_path=self._last_report_path,
+                input_tokens=0,
+                output_tokens=0,
+                latency_ms=(time.perf_counter() - start_time) * 1000,
+            )
+
+        # Meta-Tuning check: configuración global, persistencia de reglas y bucle de aclaración
+        tuning_res = self.metatuning.process(prompt, self.active_context_id)
+        if tuning_res:
+            self.history.append(Turn(role="user", text=prompt))
+            self.history.append(Turn(role="coach", text=tuning_res.spoken_response))
+            return CoachResponse(
+                spoken_text=tuning_res.spoken_response,
+                report_path=tuning_res.report_path or self._last_report_path,
                 input_tokens=0,
                 output_tokens=0,
                 latency_ms=(time.perf_counter() - start_time) * 1000,
