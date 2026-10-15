@@ -19,6 +19,21 @@ class GeminiConfig:
 
 
 @dataclass
+class NvidiaConfig:
+    model: str = "meta/llama-3.2-11b-vision-instruct"
+    base_url: str = "https://integrate.api.nvidia.com/v1"
+    temperature: float = 0.2
+    max_tokens: int = 500
+    api_key: Optional[str] = None
+    api_key_env: str = "NVIDIA_API_KEY"
+
+
+@dataclass
+class LLMConfig:
+    provider: str = "gemini"  # "gemini" or "nvidia"
+
+
+@dataclass
 class CaptureRegion:
     x: int
     y: int
@@ -81,6 +96,8 @@ class HistoryConfig:
 @dataclass
 class AppConfig:
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
+    nvidia: NvidiaConfig = field(default_factory=NvidiaConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
     capture: CaptureConfig = field(default_factory=CaptureConfig)
     listener: ListenerConfig = field(default_factory=ListenerConfig)
     speaker: SpeakerConfig = field(default_factory=SpeakerConfig)
@@ -177,8 +194,26 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         max_turns=int(his_raw.get("max_turns", 5)),
     )
 
+    llm_raw = raw.get("llm", {})
+    llm_cfg = LLMConfig(
+        provider=str(llm_raw.get("provider", "gemini")).lower().strip()
+    )
+
+    nvd_raw = raw.get("nvidia", {})
+    nvd_key_env = str(nvd_raw.get("api_key_env", "NVIDIA_API_KEY"))
+    nvd_cfg = NvidiaConfig(
+        model=str(nvd_raw.get("model", "meta/llama-3.2-11b-vision-instruct")),
+        base_url=str(nvd_raw.get("base_url", "https://integrate.api.nvidia.com/v1")),
+        temperature=float(nvd_raw.get("temperature", 0.2)),
+        max_tokens=int(nvd_raw.get("max_tokens", 500)),
+        api_key=nvd_raw.get("api_key") or os.getenv(nvd_key_env),
+        api_key_env=nvd_key_env,
+    )
+
     return AppConfig(
         gemini=gemini_cfg,
+        nvidia=nvd_cfg,
+        llm=llm_cfg,
         capture=cap_cfg,
         listener=lis_cfg,
         speaker=spk_cfg,

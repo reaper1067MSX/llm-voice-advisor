@@ -211,4 +211,93 @@ def test_record_seconds_mocked():
     assert res == "transcribed_1024"
 
 
+def test_nvidia_and_llm_config_loading(tmp_path: Path):
+    cfg_file = tmp_path / "nvidia_config.yaml"
+    cfg_file.write_text(
+        """
+llm:
+  provider: "nvidia"
+nvidia:
+  model: "meta/llama-3.2-90b-vision-instruct"
+  base_url: "https://integrate.api.nvidia.com/v1"
+  temperature: 0.1
+  max_tokens: 300
+""",
+        encoding="utf-8",
+    )
+    cfg = load_config(str(cfg_file))
+    assert cfg.llm.provider == "nvidia"
+    assert cfg.nvidia.model == "meta/llama-3.2-90b-vision-instruct"
+    assert cfg.nvidia.base_url == "https://integrate.api.nvidia.com/v1"
+    assert cfg.nvidia.temperature == 0.1
+    assert cfg.nvidia.max_tokens == 300
+
+
+def test_provider_factory_missing_keys(monkeypatch):
+    from abi_coach.config import AppConfig, LLMConfig
+    from abi_coach.providers.factory import create_llm_provider
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
+
+    gemini_cfg = AppConfig(llm=LLMConfig(provider="gemini"))
+    gemini_cfg.gemini.api_key = None
+    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+        create_llm_provider(gemini_cfg)
+
+    nvidia_cfg = AppConfig(llm=LLMConfig(provider="nvidia"))
+    nvidia_cfg.nvidia.api_key = None
+    with pytest.raises(ValueError, match="NVIDIA NIM"):
+        create_llm_provider(nvidia_cfg)
+
+
+def test_nvidia_nim_provider_requires_openai():
+    from abi_coach.config import NvidiaConfig
+    from abi_coach.providers.nvidia import NvidiaNIMProvider
+
+    cfg = NvidiaConfig()
+    with pytest.raises(ImportError, match="uv add openai"):
+        NvidiaNIMProvider(config=cfg, api_key="test-key")
+
+
+def test_brain_with_mock_provider(tmp_path: Path):
+    from abi_coach.brain import Brain
+    from abi_coach.config import AppConfig
+    from abi_coach.providers.base import ProviderResponse
+
+    call_log = {}
+
+    class MockProvider:
+        def generate(self, prompt, system_instruction, image_bytes=None, crop_bytes=None, history_text=None, tool_callback=None):
+            call_log["prompt"] = prompt
+            call_log["system_instruction"] = system_instruction
+            call_log["history_text"] = history_text
+            if tool_callback:
+                tool_callback("Test Report", "<p>Report details</p>")
+            return ProviderResponse(
+                spoken_text="Mocked advice: use M80.",
+                input_tokens=150,
+                output_tokens=30,
+                latency_ms=120.5,
+            )
+
+    cfg = AppConfig()
+    cfg.reports.output_dir = str(tmp_path / "reports")
+    cfg.reports.auto_open_browser = False
+
+    brain = Brain(config=cfg, provider=MockProvider())
+    response = brain.ask("¿Qué munición uso?")
+
+    assert response.spoken_text == "Mocked advice: use M80."
+    assert response.input_tokens == 150
+    assert response.output_tokens == 30
+    assert response.latency_ms == 120.5
+    assert response.report_path is not None
+    assert "Test Report" in Path(response.report_path).read_text(encoding="utf-8")
+    assert call_log["prompt"] == "¿Qué munición uso?"
+    assert len(brain.history) == 2
+    assert brain.history[0].role == "user"
+    assert brain.history[1].text == "Mocked advice: use M80."
+
+
 

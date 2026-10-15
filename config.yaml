@@ -2,12 +2,24 @@
 # ABI Coach - Archivo de Configuración
 # ==========================================
 
+# Proveedor LLM activo: "gemini" (por defecto) o "nvidia" (NVIDIA NIM)
+llm:
+  provider: "gemini"
+
 gemini:
   # Modelo ultra rápido para visión y análisis con cero saturación
   model: "gemini-3.1-flash-lite-preview"
   # Opciones: high, medium, low (en Gemini 3 / 2.5 regula la resolución interna de imagen)
   media_resolution: "high"
   temperature: 0.3
+
+nvidia:
+  # Modelo multimodal en catálogo build.nvidia.com (requiere 'uv add openai')
+  model: "meta/llama-3.2-11b-vision-instruct"
+  base_url: "https://integrate.api.nvidia.com/v1"
+  api_key_env: "NVIDIA_API_KEY"
+  temperature: 0.2
+  max_tokens: 500
 
 capture:
   # Monitor del juego (1 = DISPLAY1 2560x1440 primario)

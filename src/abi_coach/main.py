@@ -177,6 +177,10 @@ def run_interactive_loop(config) -> None:
         title_str = "🎮 GAME ADVISOR - AI Gaming Voice Co-pilot"
         game_display = "Universal / Multijuego (Análisis en vivo de pantalla)"
 
+    active_provider = getattr(config.llm, "provider", "gemini").lower()
+    active_model = config.nvidia.model if active_provider == "nvidia" else config.gemini.model
+    provider_label = "NVIDIA NIM" if active_provider == "nvidia" else "Gemini Vision"
+
     print(
         BANNER.format(
             title=title_str,
@@ -184,7 +188,7 @@ def run_interactive_loop(config) -> None:
             key=config.listener.ptt_key.upper(),
             gpu=f"{config.listener.whisper_device.upper()} ({config.listener.whisper_compute_type})",
             voice=config.speaker.voice,
-            model=config.gemini.model,
+            model=f"{provider_label} ({active_model})",
         ),
         flush=True,
     )
@@ -195,7 +199,7 @@ def run_interactive_loop(config) -> None:
     print(f"  [2/4] 🎙️ Cargando faster-whisper ({config.listener.whisper_model}) en GPU ({config.listener.whisper_device.upper()})...", flush=True)
     listener = AudioListener(config.listener)
     listener.init_whisper()
-    print(f"  [3/4] 🧠 Conectando con Gemini Vision ({config.gemini.model})...", flush=True)
+    print(f"  [3/4] 🧠 Conectando con {provider_label} ({active_model})...", flush=True)
     brain = Brain(config)
     print("  [4/4] 🎧 Abriendo stream de micrófono y búfer circular (16 kHz)...", flush=True)
     listener.start_stream()

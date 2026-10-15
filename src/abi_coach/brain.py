@@ -13,6 +13,8 @@ from google import genai
 from google.genai import types
 
 from abi_coach.config import AppConfig
+from abi_coach.providers.base import LLMProvider
+from abi_coach.providers.factory import create_llm_provider
 from abi_coach.reports import create_html_report
 
 
@@ -150,20 +152,27 @@ def load_preset(game_name: str) -> str:
 
 
 class Brain:
-    def __init__(self, config: AppConfig, report_opener: Optional[Callable[[str], Any]] = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        report_opener: Optional[Callable[[str], Any]] = None,
+        provider: Optional[LLMProvider] = None,
+    ):
         self.config = config
         self.report_opener = report_opener
         self.history: List[Turn] = []
 
-        api_key = config.gemini.api_key or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "No se encontró GEMINI_API_KEY. Configúrala en el archivo .env o en config.yaml"
-            )
-        self.client = genai.Client(api_key=api_key)
+        if provider is not None:
+            self.provider = provider
+        else:
+            self.provider = create_llm_provider(config)
+
+    @property
+    def client(self) -> Any:
+        return getattr(self.provider, "client", None)
 
     def _get_media_resolution(self) -> types.MediaResolution:
-        res = self.config.gemini.media_resolution.lower()
+        res = (getattr(self.config.gemini, "media_resolution", "high") or "high").lower()
         if res == "high":
             return types.MediaResolution.MEDIA_RESOLUTION_HIGH
         if res == "medium":
@@ -184,7 +193,7 @@ class Brain:
         image_bytes: Optional[bytes] = None,
         crop_bytes: Optional[Dict[str, bytes]] = None,
     ) -> CoachResponse:
-        """Send multimodal or text query to Gemini Flash with tools and rolling history."""
+        """Send multimodal or text query to LLM provider with tools and rolling history."""
         start_time = time.perf_counter()
         generated_report_path: Optional[str] = None
 
@@ -203,10 +212,6 @@ class Brain:
             generated_report_path = str(path)
             return f"Informe HTML creado exitosamente en {path} y mostrado en pantalla."
 
-
-        contents: List[Any] = []
-        media_res = self._get_media_resolution()
-
         # 1. Add rolling text history (without old images to save tokens)
         max_turns = max(0, getattr(self.config.history, "max_turns", 5))
         if max_turns > 0:
@@ -215,47 +220,18 @@ class Brain:
         else:
             history_slice = []
 
-        for turn in history_slice:
-            contents.append(f"{turn.role.upper()}: {turn.text}")
+        history_lines = [f"{turn.role.upper()}: {turn.text}" for turn in history_slice]
 
-        # 2. Add current image(s) if provided
-        if image_bytes:
-            contents.append(
-                types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type="image/jpeg",
-                    media_resolution=media_res,
-                )
-            )
-
-        if crop_bytes:
-            for region_name, crop_data in crop_bytes.items():
-                contents.append(f"[Recorte detallado nativo de región: {region_name}]")
-                contents.append(
-                    types.Part.from_bytes(
-                        data=crop_data,
-                        mime_type="image/jpeg",
-                        media_resolution=media_res,
-                    )
-                )
-
-        # 3. Add current user question
-        contents.append(f"JUGADOR: {prompt}")
-
-        gen_config = types.GenerateContentConfig(
+        res = self.provider.generate(
+            prompt=prompt,
             system_instruction=self.get_system_instruction(),
-            temperature=self.config.gemini.temperature,
-            media_resolution=media_res,
-            tools=[create_report_tool],
+            image_bytes=image_bytes,
+            crop_bytes=crop_bytes,
+            history_text=history_lines,
+            tool_callback=create_report_tool,
         )
 
-        chat = self.client.chats.create(
-            model=self.config.gemini.model,
-            config=gen_config,
-        )
-
-        response = chat.send_message(contents)
-        spoken_text = response.text or ""
+        spoken_text = res.spoken_text or ""
 
         # Update history
         self.history.append(Turn(role="user", text=prompt))
@@ -263,19 +239,15 @@ class Brain:
         if len(self.history) > 50:
             self.history = self.history[-50:]
 
-        # Token usage if available
-        input_tokens = None
-        output_tokens = None
-        if hasattr(response, "usage_metadata") and response.usage_metadata:
-            input_tokens = getattr(response.usage_metadata, "prompt_token_count", None)
-            output_tokens = getattr(response.usage_metadata, "candidates_token_count", None)
-
-        duration_ms = (time.perf_counter() - start_time) * 1000
+        report_path = res.report_path or generated_report_path
+        latency_ms = (
+            res.latency_ms if res.latency_ms > 0 else (time.perf_counter() - start_time) * 1000
+        )
 
         return CoachResponse(
             spoken_text=spoken_text,
-            report_path=generated_report_path,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            latency_ms=duration_ms,
+            report_path=report_path,
+            input_tokens=res.input_tokens,
+            output_tokens=res.output_tokens,
+            latency_ms=latency_ms,
         )
