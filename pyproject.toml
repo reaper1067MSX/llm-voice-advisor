@@ -1,7 +1,7 @@
 [project]
-name = "abi-coach"
+name = "llm-voice-advisor"
 version = "0.1.0"
-description = "Add your description here"
+description = "Real-time Multimodal AI Gaming Voice Advisor & Tactical Co-pilot with VAD, local GPU Whisper STT, Natural TTS, Smart Visual Inference, and dynamic secondary-monitor dashboards."
 authors = [
     { name = "Santiago Arguello", email = "geovanny1067@hotmail.com" }
 ]
@@ -25,13 +25,20 @@ dependencies = [
 ]
 
 [project.scripts]
-abi-coach = "abi_coach:main"
+llm-voice-advisor = "abi_coach.main:main"
+abi-coach = "abi_coach.main:main"
+
 
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = "src"
+module-name = "abi_coach"
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
 ]
+
