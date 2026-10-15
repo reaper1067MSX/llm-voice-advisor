@@ -39,7 +39,7 @@ set "USER_API_KEY="
 set /p USER_API_KEY="Pega tu clave de Gemini aqui y presiona ENTER: "
 if "%USER_API_KEY%"=="" goto :NO_KEY_ENTERED
 
-echo GEMINI_API_KEY=%USER_API_KEY%>.env
+(echo GEMINI_API_KEY=%USER_API_KEY%)>.env
 echo.
 echo [OK] Clave guardada con exito en .env
 echo.

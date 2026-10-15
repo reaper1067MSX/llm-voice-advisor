@@ -94,7 +94,7 @@ set "USER_KEY="
 set /p USER_KEY="Pega tu clave de Gemini aqui (o presiona ENTER para omitir): "
 if "%USER_KEY%"=="" goto :SKIP_KEY
 
-echo GEMINI_API_KEY=%USER_KEY%>.env
+(echo GEMINI_API_KEY=%USER_KEY%)>.env
 echo      [OK] Clave guardada con exito en .env
 goto :DONE
 
@@ -103,7 +103,7 @@ if not exist ".env" (
     if exist ".env.example" (
         copy /y ".env.example" ".env" >nul
     ) else (
-        echo GEMINI_API_KEY=>.env
+        (echo GEMINI_API_KEY=)>.env
     )
 )
 echo      [AVISO] Puedes pegar tu clave luego editando el archivo .env con el Bloc de notas.
