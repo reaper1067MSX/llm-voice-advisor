@@ -1,4 +1,10 @@
 .env
+keys.env
+keys.yaml
+dist/
+build/
+*.spec.bak
+
 .venv/
 __pycache__/
 *.py[cod]

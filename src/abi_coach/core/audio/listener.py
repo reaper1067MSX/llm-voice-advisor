@@ -53,6 +53,16 @@ def _setup_cuda_dlls() -> None:
         import sys
 
         candidate_dirs = []
+        if getattr(sys, "frozen", False):
+            exe_dir = os.path.dirname(sys.executable)
+            candidate_dirs.append(exe_dir)
+            internal_dir = os.path.join(exe_dir, "_internal")
+            if os.path.isdir(internal_dir):
+                candidate_dirs.append(internal_dir)
+                for root, dirs, _ in os.walk(internal_dir):
+                    if any(name in root.lower() for name in ["cublas", "cudnn", "ctranslate2", "nvidia"]):
+                        candidate_dirs.append(root)
+
         for p in sys.path:
             if "site-packages" in p:
                 nvidia_dir = os.path.join(p, "nvidia")

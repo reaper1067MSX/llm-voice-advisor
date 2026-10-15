@@ -38,6 +38,7 @@ module-name = "abi_coach"
 
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.22.3",
     "pytest>=9.1.1",
 ]
 

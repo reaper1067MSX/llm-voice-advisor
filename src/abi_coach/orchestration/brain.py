@@ -146,11 +146,22 @@ def load_preset(game_name: str) -> str:
     if canonical in _PRESET_CACHE:
         return _PRESET_CACHE[canonical]
 
-    # Search for presets directory across parent directories
+    import sys
+
+    # Search for presets directory across base_dir, _MEIPASS, and parent directories
+    preset_candidates = []
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).parent
+        preset_candidates.append(base / "presets" / f"{canonical}.md")
+        if hasattr(sys, "_MEIPASS"):
+            preset_candidates.append(Path(sys._MEIPASS) / "presets" / f"{canonical}.md")
+
     cur_file = Path(__file__).resolve()
-    preset_path = None
     for p in cur_file.parents:
-        cand = p / "presets" / f"{canonical}.md"
+        preset_candidates.append(p / "presets" / f"{canonical}.md")
+
+    preset_path = None
+    for cand in preset_candidates:
         if cand.is_file():
             preset_path = cand
             break

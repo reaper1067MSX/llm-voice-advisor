@@ -12,14 +12,55 @@ from abi_coach.entrypoints.loop import run_interactive_loop
 from abi_coach.orchestration.brain import Brain
 
 
+def check_api_keys(config) -> bool:
+    """Verifica si las claves necesarias de API están configuradas y orienta amigablemente al usuario."""
+    provider = getattr(config.llm, "provider", "gemini").lower()
+    missing = False
+    provider_name = "Google Gemini"
+    key_name = "GEMINI_API_KEY"
+    url = "https://aistudio.google.com/"
+
+    if provider == "gemini":
+        api_key = config.gemini.api_key or os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key.strip() in ("", "tu_clave_de_gemini_aqui"):
+            missing = True
+    elif provider == "nvidia":
+        provider_name = "NVIDIA NIM"
+        key_name = "NVIDIA_API_KEY"
+        url = "https://build.nvidia.com/"
+        api_key = getattr(config.llm.nvidia, "api_key", None) or os.getenv("NVIDIA_API_KEY")
+        if not api_key or api_key.strip() in ("", "tu_clave_de_nvidia_aqui"):
+            missing = True
+
+    if missing:
+        print("\n" + "=" * 74, flush=True)
+        print(" ⚠️  LLM GAME ADVISOR — CONFIGURACIÓN DE CLAVES REQUERIDA", flush=True)
+        print("=" * 74, flush=True)
+        print(f" No se encontró una clave de API válida para {provider_name}.", flush=True)
+        print("\n Pasos para comenzar a usar el asesor:", flush=True)
+        print(" 1. Abre el archivo 'keys.env' (ubicado junto a este ejecutable).", flush=True)
+        print(f" 2. Obtén tu clave en: {url}", flush=True)
+        print(" 3. Escribe tu clave dentro de 'keys.env':", flush=True)
+        print(f'    {key_name}="tu_clave_aqui"', flush=True)
+        print(" 4. Guarda los cambios e inicia la aplicación nuevamente.", flush=True)
+        print("=" * 74 + "\n", flush=True)
+        if sys.stdin.isatty():
+            try:
+                input("Presiona ENTER para salir...")
+            except Exception:
+                pass
+        return False
+    return True
+
+
 def cmd_list_models(config) -> None:
     """List available Gemini models for the current API key."""
     from google import genai
 
-    api_key = config.gemini.api_key or os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("❌ Error: No se encontró GEMINI_API_KEY. Configúrala en .env")
+    if not check_api_keys(config):
         sys.exit(1)
+
+    api_key = config.gemini.api_key or os.getenv("GEMINI_API_KEY")
 
     print("🔍 Conectando con Google AI Studio...")
     client = genai.Client(api_key=api_key)
@@ -166,8 +207,12 @@ def main() -> None:
     elif args.test_mic:
         cmd_test_mic(cfg)
     elif args.ask is not None:
+        if not check_api_keys(cfg):
+            sys.exit(1)
         cmd_ask(cfg, args.ask)
     else:
+        if not check_api_keys(cfg):
+            sys.exit(1)
         run_interactive_loop(cfg)
 
 

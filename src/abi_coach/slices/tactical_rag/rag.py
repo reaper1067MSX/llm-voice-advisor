@@ -51,16 +51,23 @@ class KnowledgeRAG:
         cur.execute("SELECT COUNT(*) FROM game_knowledge WHERE game = 'abi';")
         count = cur.fetchone()[0]
         if count == 0:
+            import sys
+
+            seed_candidates = []
+            if getattr(sys, "frozen", False):
+                base = Path(sys.executable).parent
+                seed_candidates.append(base / "data" / "abi_knowledge.json")
+                if hasattr(sys, "_MEIPASS"):
+                    seed_candidates.append(Path(sys._MEIPASS) / "data" / "abi_knowledge.json")
             cur_file = Path(__file__).resolve()
-            seed_path = None
             for p in cur_file.parents:
-                cand = p / "data" / "abi_knowledge.json"
+                seed_candidates.append(p / "data" / "abi_knowledge.json")
+                seed_candidates.append(p / "src" / "abi_coach" / "data" / "abi_knowledge.json")
+
+            seed_path = None
+            for cand in seed_candidates:
                 if cand.is_file():
                     seed_path = cand
-                    break
-                cand_src = p / "src" / "abi_coach" / "data" / "abi_knowledge.json"
-                if cand_src.is_file():
-                    seed_path = cand_src
                     break
             if seed_path and seed_path.is_file():
                 try:

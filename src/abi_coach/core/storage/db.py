@@ -13,14 +13,19 @@ class DatabaseManager:
 
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
-            cur = Path(__file__).resolve()
-            root = None
-            for p in cur.parents:
-                if (p / "pyproject.toml").is_file():
-                    root = p
-                    break
-            if root is None:
-                root = cur.parents[4]
+            import sys
+
+            if getattr(sys, "frozen", False):
+                root = Path(sys.executable).parent
+            else:
+                cur = Path(__file__).resolve()
+                root = None
+                for p in cur.parents:
+                    if (p / "pyproject.toml").is_file():
+                        root = p
+                        break
+                if root is None:
+                    root = cur.parents[4]
             self.db_path = (root / "data" / "advisor.sqlite3").resolve()
         else:
             self.db_path = Path(db_path).resolve()

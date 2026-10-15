@@ -104,20 +104,51 @@ class AppConfig:
     history: HistoryConfig = field(default_factory=HistoryConfig)
 
 
-def load_config(config_path: Optional[str] = None) -> AppConfig:
-    """Load configuration from YAML and environment variables."""
-    load_dotenv()
+import sys
 
-    if config_path is None:
+
+def load_config(config_path: Optional[str] = None) -> AppConfig:
+    """Load configuration from YAML and environment variables, supporting frozen exe and dedicated keys file."""
+    # 1. Determine root application directory
+    if getattr(sys, "frozen", False):
+        base_dir = Path(sys.executable).parent
+    else:
         cur = Path(__file__).resolve()
-        root_dir = None
+        base_dir = None
         for p in cur.parents:
             if (p / "config.yaml").is_file() or (p / "pyproject.toml").is_file():
-                root_dir = p
+                base_dir = p
                 break
-        if root_dir is None:
-            root_dir = cur.parents[3]
-        target_path = root_dir / "config.yaml"
+        if base_dir is None:
+            base_dir = cur.parents[3]
+
+    # 2. Search and load keys from keys.env, .env in base_dir and CWD
+    env_candidates = [
+        base_dir / "keys.env",
+        base_dir / ".env",
+        Path.cwd() / "keys.env",
+        Path.cwd() / ".env",
+    ]
+    for env_path in env_candidates:
+        if env_path.is_file():
+            load_dotenv(dotenv_path=env_path, override=False)
+
+    # 3. Check for simplified keys.yaml in base_dir and CWD
+    for key_yaml in [base_dir / "keys.yaml", Path.cwd() / "keys.yaml"]:
+        if key_yaml.is_file():
+            try:
+                with open(key_yaml, "r", encoding="utf-8") as f:
+                    k_data = yaml.safe_load(f) or {}
+                    if "gemini_api_key" in k_data and not os.getenv("GEMINI_API_KEY"):
+                        os.environ["GEMINI_API_KEY"] = str(k_data["gemini_api_key"]).strip()
+                    if "nvidia_api_key" in k_data and not os.getenv("NVIDIA_API_KEY"):
+                        os.environ["NVIDIA_API_KEY"] = str(k_data["nvidia_api_key"]).strip()
+            except Exception:
+                pass
+
+    # 4. Resolve target config.yaml path
+    if config_path is None:
+        target_path = base_dir / "config.yaml"
     else:
         target_path = Path(config_path)
 
