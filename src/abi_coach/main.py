@@ -137,6 +137,39 @@ import threading
 import sounddevice as sd
 
 
+def should_inspect_screen(prompt: str) -> bool:
+    """Infer if question requires examining the live screen or is conceptual/strategic."""
+    p = prompt.lower().strip()
+
+    # 1. Direct visual triggers
+    visual_triggers = [
+        "mira", "mirá", "mire", "miren", "observa", "fijate", "fíjate", "revisa", "analiza mi pantalla",
+        "en pantalla", "mi pantalla", "la pantalla", "ves", "veo", "viendo",
+    ]
+    if any(trigger in p for trigger in visual_triggers):
+        return True
+
+    # 2. Deictic references (referring to something currently displayed)
+    deictic_patterns = [
+        " esto", "esta ", "este ", "estos ", "estas ", " aqui", " acá", " acá",
+        "cuál me llevo", "cuál guardo", "qué me llevo", "qué guardo", "vale la pena lootear",
+        "dónde estoy", "donde estoy", "por dónde salgo", "por donde salgo", "hacia dónde voy",
+    ]
+    if any(pat in p for pat in deictic_patterns):
+        return True
+
+    # 3. In-game object & inventory references
+    context_triggers = [
+        "mi alijo", "en mi alijo", "mi inventario", "en mi inventario", "mi mochila",
+        "este cuerpo", "el cuerpo", "esta caja", "el cadáver", "el cadaver",
+        "cuánto vale esto", "a cuánto se vende esto", "precio de esto",
+    ]
+    if any(ctx in p for ctx in context_triggers):
+        return True
+
+    return False
+
+
 def run_interactive_loop(config) -> None:
     """Start the main event-driven Push-to-Talk coach loop."""
     game_lower = (config.gemini.game or "generic").lower().strip()
@@ -241,39 +274,6 @@ def run_interactive_loop(config) -> None:
     finally:
         listener.resume_listening()
     print("🎧 Esperando tus preguntas...\n", flush=True)
-
-def should_inspect_screen(prompt: str) -> bool:
-    """Infer if question requires examining the live screen or is conceptual/strategic."""
-    p = prompt.lower().strip()
-
-    # 1. Direct visual triggers
-    visual_triggers = [
-        "mira", "mirá", "mire", "miren", "observa", "fijate", "fíjate", "revisa", "analiza mi pantalla",
-        "en pantalla", "mi pantalla", "la pantalla", "ves", "veo", "viendo",
-    ]
-    if any(trigger in p for trigger in visual_triggers):
-        return True
-
-    # 2. Deictic references (referring to something currently displayed)
-    deictic_patterns = [
-        " esto", "esta ", "este ", "estos ", "estas ", " aqui", " acá", " acá",
-        "cuál me llevo", "cuál guardo", "qué me llevo", "qué guardo", "vale la pena lootear",
-        "dónde estoy", "donde estoy", "por dónde salgo", "por donde salgo", "hacia dónde voy",
-    ]
-    if any(pat in p for pat in deictic_patterns):
-        return True
-
-    # 3. In-game object & inventory references
-    context_triggers = [
-        "mi alijo", "en mi alijo", "mi inventario", "en mi inventario", "mi mochila",
-        "este cuerpo", "el cuerpo", "esta caja", "el cadáver", "el cadaver",
-        "cuánto vale esto", "a cuánto se vende esto", "precio de esto",
-    ]
-    if any(ctx in p for ctx in context_triggers):
-        return True
-
-    return False
-
 
     latest_capture = None
 
