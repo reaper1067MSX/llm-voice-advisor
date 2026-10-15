@@ -85,10 +85,7 @@ def cmd_test_mic(config) -> None:
     listener = AudioListener(config.listener)
     listener.init_whisper()
     print("Habla ahora durante 3 segundos...")
-    listener.start_recording()
-    time.sleep(3.0)
-    print("Procesando y transcribiendo...")
-    transcript = listener.stop_recording_and_transcribe()
+    transcript = listener.record_seconds(3.0)
     if transcript:
         print(f"\n✅ Transcripción exitosa: \"{transcript}\"")
     else:

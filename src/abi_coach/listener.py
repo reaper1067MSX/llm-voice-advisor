@@ -183,6 +183,54 @@ class AudioListener:
             except Exception as e:
                 print(f"⚠️ Aviso al iniciar InputStream de micrófono: {e}")
 
+    def record_seconds(self, duration_sec: float = 3.0) -> Optional[str]:
+        """Record audio for a fixed number of seconds and transcribe it."""
+        self.start_stream()
+        recorded_chunks = []
+        while not self._audio_queue.empty():
+            try:
+                self._audio_queue.get_nowait()
+            except queue.Empty:
+                break
+
+        start_time = time.perf_counter()
+        while time.perf_counter() - start_time < duration_sec:
+            try:
+                chunk, _ = self._audio_queue.get(timeout=0.1)
+                recorded_chunks.append(chunk)
+            except queue.Empty:
+                continue
+
+        if not recorded_chunks:
+            return None
+
+        audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
+        return self.transcribe_audio(audio_data)
+
+    def start_recording(self) -> None:
+        """Start buffering audio blocks for manual recording testing."""
+        self.start_stream()
+        self._test_chunks = []
+        while not self._audio_queue.empty():
+            try:
+                self._audio_queue.get_nowait()
+            except queue.Empty:
+                break
+
+    def stop_recording_and_transcribe(self) -> Optional[str]:
+        """Drain accumulated audio blocks and transcribe."""
+        chunks = getattr(self, "_test_chunks", [])
+        while not self._audio_queue.empty():
+            try:
+                chunk, _ = self._audio_queue.get_nowait()
+                chunks.append(chunk)
+            except queue.Empty:
+                break
+        if not chunks:
+            return None
+        audio_data = np.concatenate(chunks, axis=0).flatten()
+        return self.transcribe_audio(audio_data)
+
     def pause_listening(self) -> None:
         """Pause VAD and audio ingestion while the Coach is speaking aloud."""
         self._is_paused = True
