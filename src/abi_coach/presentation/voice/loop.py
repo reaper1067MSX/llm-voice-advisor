@@ -147,6 +147,13 @@ def run_interactive_loop(config) -> None:
     is_vad = config.listener.mode.lower() in ("continuous", "hybrid")
     mode_title = "🎙️ MODO MANOS LIBRES ACTIVO (Detección de voz automática)" if is_vad else f"🔘 MODO PUSH-TO-TALK (Tecla [{target_key}])"
 
+    # Verificación no bloqueante de boletín de actualización de GitHub
+    try:
+        from abi_coach.infrastructure.adapters.updater import print_bulletin_if_available
+        print_bulletin_if_available(timeout_sec=1.2)
+    except Exception:
+        pass
+
     print("\n" + "=" * 66, flush=True)
     print("✅ ¡ABI Voice Coach listo para el combate!", flush=True)
     print(f"   {mode_title}", flush=True)

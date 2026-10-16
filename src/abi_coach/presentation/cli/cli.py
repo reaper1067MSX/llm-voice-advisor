@@ -197,6 +197,7 @@ def main() -> None:
     parser.add_argument("--test-tts", type=str, default=None, help="Probar motor de voz con el texto indicado")
     parser.add_argument("--test-mic", action="store_true", help="Probar micrófono y transcripción local Whisper")
     parser.add_argument("--ask", type=str, default=None, help="Hacer una consulta con texto y captura sin usar micro")
+    parser.add_argument("--check-updates", action="store_true", help="Comprobar si existe una nueva versión en GitHub")
 
     args = parser.parse_args()
     cfg = load_config(args.config)
@@ -217,6 +218,15 @@ def main() -> None:
         cmd_test_tts(cfg, args.test_tts)
     elif args.test_mic:
         cmd_test_mic(cfg)
+    elif args.check_updates:
+        from abi_coach import __version__
+        from abi_coach.infrastructure.adapters.updater import check_for_updates, render_terminal_bulletin
+        print(f"🔍 Comprobando actualizaciones en GitHub (versión actual: v{__version__})...", flush=True)
+        bulletin = check_for_updates(timeout_sec=2.5)
+        if bulletin:
+            print(render_terminal_bulletin(bulletin), flush=True)
+        else:
+            print(f"✅ ¡Estás al día! Tienes instalada la versión más reciente (v{__version__}).\n", flush=True)
     elif args.ask is not None:
         if not check_api_keys(cfg):
             sys.exit(1)
