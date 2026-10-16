@@ -3,8 +3,12 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.archetypes import ArchetypeManager, DynamicEntity, EngramObservation
-from abi_coach.db import DatabaseManager
+from abi_coach.application.slices.archetypes.manager import (
+    ArchetypeManager,
+    DynamicEntity,
+    EngramObservation,
+)
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 
 
 def test_archetype_manager_default_seeding(tmp_path: Path):

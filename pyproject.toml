@@ -1,6 +1,6 @@
 [project]
 name = "llm-voice-advisor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Real-time Multimodal AI Gaming Voice Advisor & Tactical Co-pilot with VAD, local GPU Whisper STT, Natural TTS, Smart Visual Inference, and dynamic secondary-monitor dashboards."
 authors = [
     { name = "Santiago Arguello", email = "geovanny1067@hotmail.com" }
@@ -23,9 +23,9 @@ dependencies = [
 ]
 
 [project.scripts]
-game-advisor = "abi_coach.main:main"
-llm-voice-advisor = "abi_coach.main:main"
-abi-coach = "abi_coach.main:main"
+game-advisor = "abi_coach.presentation.cli:main"
+llm-voice-advisor = "abi_coach.presentation.cli:main"
+abi-coach = "abi_coach.presentation.cli:main"
 
 
 [build-system]

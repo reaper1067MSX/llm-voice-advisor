@@ -3,8 +3,8 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.db import DatabaseManager
-from abi_coach.memory import CompanionMemory, MemoryItem
+from abi_coach.application.slices.companion_memory.memory import CompanionMemory, MemoryItem
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 
 
 def test_database_manager_wal_mode(tmp_path: Path):
@@ -146,9 +146,9 @@ def test_companion_memory_game_isolation(tmp_path: Path):
 
 
 def test_brain_system_instruction_enriches_memory(tmp_path: Path):
-    from abi_coach.brain import Brain
-    from abi_coach.config import AppConfig
-    from abi_coach.providers.base import ProviderResponse
+    from abi_coach.application.orchestration.brain import Brain
+    from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
+    from abi_coach.infrastructure.config.settings import AppConfig
 
     class DummyProvider:
         def generate(self, *args, **kwargs):

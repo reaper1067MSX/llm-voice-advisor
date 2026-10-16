@@ -1,8 +1,8 @@
 """Audio Adapters implementing AudioInputPort and AudioOutputPort."""
 
 from typing import Callable, Optional
-from abi_coach.core.audio.listener import AudioListener
-from abi_coach.core.audio.speaker import Speaker
+from abi_coach.infrastructure.adapters.audio.listener import AudioListener
+from abi_coach.infrastructure.adapters.audio.speaker import Speaker
 from abi_coach.domain.common.errors import DomainError
 from abi_coach.domain.common.result import Result, fail, ok
 from abi_coach.domain.ports.audio_port import AudioInputPort, AudioOutputPort

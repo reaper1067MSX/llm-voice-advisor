@@ -3,10 +3,10 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.brain import Brain
-from abi_coach.config import AppConfig
-from abi_coach.db import DatabaseManager
-from abi_coach.providers.base import ProviderResponse
+from abi_coach.application.orchestration.brain import Brain
+from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
+from abi_coach.infrastructure.config.settings import AppConfig
 
 
 class DummyProvider:

@@ -7,8 +7,8 @@ from abi_coach.domain.common.errors import DomainError
 from abi_coach.domain.common.result import Result, fail, ok
 from abi_coach.domain.ports.vision_port import ReportDisplayPort
 from abi_coach.infrastructure.config.yaml_loader import ReportConfig
-from abi_coach.slices.reporting.builder import TacticalReportBuilder
-from abi_coach.slices.reporting.reports import create_html_report
+from abi_coach.application.slices.reporting.builder import TacticalReportBuilder
+from abi_coach.application.slices.reporting.reports import create_html_report
 
 
 class BrowserDisplayAdapter(ReportDisplayPort):

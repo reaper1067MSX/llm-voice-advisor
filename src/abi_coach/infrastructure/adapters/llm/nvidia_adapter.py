@@ -65,19 +65,35 @@ class NvidiaNimAdapter(LLMProviderPort):
                     }
                 )
 
+            if crop_bytes:
+                for region_name, c_bytes in crop_bytes.items():
+                    b64_crop = base64.b64encode(c_bytes).decode("utf-8")
+                    user_content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{b64_crop}"},
+                        }
+                    )
+
             messages.append({"role": "user", "content": user_content})
 
+            max_tok = getattr(
+                self.config, "max_tokens", getattr(self.config, "max_output_tokens", 500)
+            )
             response = self.client.chat.completions.create(
                 model=self.config.model,
                 messages=messages,
                 temperature=self.config.temperature,
-                max_tokens=self.config.max_output_tokens,
+                max_tokens=max_tok,
             )
 
             latency = (time.perf_counter() - start_time) * 1000
-            spoken_text = response.choices[0].message.content or ""
-            in_tok = getattr(response.usage, "prompt_tokens", 0) or 0
-            out_tok = getattr(response.usage, "completion_tokens", 0) or 0
+            spoken_text = ""
+            if getattr(response, "choices", None) and response.choices[0].message.content:
+                spoken_text = response.choices[0].message.content.strip()
+            usage = getattr(response, "usage", None)
+            in_tok = getattr(usage, "prompt_tokens", 0) or 0
+            out_tok = getattr(usage, "completion_tokens", 0) or 0
 
             return ok(
                 LLMResponseDTO(

@@ -4,9 +4,9 @@ from pathlib import Path
 import time
 import pytest
 
-from abi_coach.cache import MindCacheLRU
-from abi_coach.db import DatabaseManager
-from abi_coach.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.application.slices.tactical_rag.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.infrastructure.adapters.storage.cache import MindCacheLRU
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 
 
 def test_mind_cache_basic_lru_and_eviction():

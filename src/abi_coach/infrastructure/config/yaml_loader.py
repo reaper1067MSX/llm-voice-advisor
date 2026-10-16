@@ -1,6 +1,6 @@
 """Configuration loader and schema definition (Infrastructure Config)."""
 
-from abi_coach.core.config import (
+from abi_coach.infrastructure.config.settings import (
     AppConfig,
     CaptureConfig,
     CaptureRegion,
@@ -25,6 +25,7 @@ __all__ = [
     "CaptureRegion",
     "ListenerConfig",
     "SpeakerConfig",
+    "ReportConfig",
     "ReportsConfig",
     "HistoryConfig",
     "load_config",

@@ -1,6 +1,6 @@
 """Voice Driving Adapter (Presentation Layer)."""
 
-from abi_coach.entrypoints.loop import (
+from abi_coach.presentation.voice.loop import (
     BANNER,
     run_interactive_loop,
     should_inspect_screen,

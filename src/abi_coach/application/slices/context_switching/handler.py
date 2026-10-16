@@ -1,12 +1,21 @@
 """Context Switching Vertical Slice (Application Layer)."""
 
-from dataclasses import dataclass
-from typing import Optional
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Optional
+
+from abi_coach.application.pipeline import (
+    ExceptionHandlingMiddleware,
+    ExecutionPipeline,
+    LoggingMiddleware,
+)
 from abi_coach.domain.common.errors import DomainError
 from abi_coach.domain.common.result import Result, ok
 from abi_coach.domain.entities.game_context import GameContext
-from abi_coach.orchestration.brain import Brain
+
+if TYPE_CHECKING:
+    from abi_coach.application.orchestration.brain import Brain
 
 
 @dataclass(frozen=True)
@@ -21,10 +30,13 @@ class SwitchContextCommand:
 class ContextSwitchHandler:
     """Use Case Handler for game context switching and zero-seeder onboarding."""
 
-    def __init__(self, brain: Brain):
+    def __init__(self, brain: Brain, pipeline: Optional[ExecutionPipeline] = None):
         self.brain = brain
+        self.pipeline = pipeline or ExecutionPipeline(
+            [ExceptionHandlingMiddleware(), LoggingMiddleware()]
+        )
 
-    def handle(self, command: SwitchContextCommand) -> Result[GameContext, DomainError]:
+    def _handle(self, command: SwitchContextCommand) -> Result[GameContext, DomainError]:
         raw_ctx = self.brain.switch_context(
             new_context_id=command.context_id,
             new_display_name=command.display_name,
@@ -38,3 +50,7 @@ class ContextSwitchHandler:
             is_active=True,
         )
         return ok(ctx)
+
+    def handle(self, command: SwitchContextCommand) -> Result[GameContext, DomainError]:
+        return self.pipeline.execute(command, self._handle)
+

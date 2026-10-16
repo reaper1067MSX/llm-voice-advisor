@@ -1,7 +1,7 @@
 """Screen Capture Adapter implementing ScreenCapturePort (Infrastructure Vision)."""
 
 from typing import Optional
-from abi_coach.core.vision.capture import CaptureConfig, capture_screen
+from abi_coach.infrastructure.adapters.vision.capture import CaptureConfig, capture_screen
 from abi_coach.domain.common.errors import DomainError
 from abi_coach.domain.common.result import Result, fail, ok
 from abi_coach.domain.ports.vision_port import ScreenCapturePort, ScreenCaptureResultDTO

@@ -8,8 +8,8 @@ from abi_coach.domain.common.result import Result, fail, ok
 from abi_coach.domain.common.value_objects import ConfidenceScore
 from abi_coach.domain.entities.tactical_fact import TacticalDiff, TacticalFact
 from abi_coach.domain.ports.knowledge_port import KnowledgeRepositoryPort
-from abi_coach.slices.tactical_rag.rag import KnowledgeItem, KnowledgeRAG
-from abi_coach.slices.tactical_rag.reconciler import KnowledgeReconciler
+from abi_coach.application.slices.tactical_rag.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.application.slices.tactical_rag.reconciler import KnowledgeReconciler
 
 
 class SqliteKnowledgeRepository(KnowledgeRepositoryPort):

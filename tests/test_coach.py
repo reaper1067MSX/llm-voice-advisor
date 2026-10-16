@@ -4,9 +4,14 @@ from pathlib import Path
 from PIL import Image
 import pytest
 
-from abi_coach.config import AppConfig, CaptureConfig, CaptureRegion, load_config
-from abi_coach.reports import create_html_report
-from abi_coach.speaker import Speaker
+from abi_coach.application.slices.reporting.reports import create_html_report
+from abi_coach.infrastructure.adapters.audio.speaker import Speaker
+from abi_coach.infrastructure.config.settings import (
+    AppConfig,
+    CaptureConfig,
+    CaptureRegion,
+    load_config,
+)
 
 
 def test_load_default_config(tmp_path: Path):
@@ -109,7 +114,7 @@ def test_downscale_aspect_ratio_preservation():
 
 
 def test_find_browser_order():
-    from abi_coach.reports import _find_browser
+    from abi_coach.application.slices.reporting.reports import _find_browser
     # Default / Firefox preference
     b_type, b_path = _find_browser(preferred="firefox")
     assert b_type in ("firefox", "edge", "chrome", "default")
@@ -126,7 +131,7 @@ def test_find_browser_order():
 
 
 def test_history_slice_bounds():
-    from abi_coach.brain import Turn
+    from abi_coach.application.orchestration.brain import Turn
 
     history = [Turn(role="user" if i % 2 == 0 else "coach", text=f"turn{i}") for i in range(10)]
 
@@ -141,7 +146,7 @@ def test_history_slice_bounds():
 
 
 def test_load_preset():
-    from abi_coach.brain import load_preset
+    from abi_coach.application.orchestration.brain import load_preset
 
     abi_preset = load_preset("abi")
     assert "Arena Breakout: Infinite" in abi_preset
@@ -155,7 +160,7 @@ def test_load_preset():
 
 
 def test_should_inspect_screen_heuristics():
-    from abi_coach.main import should_inspect_screen
+    from abi_coach.presentation.voice.loop import should_inspect_screen
 
     # Positive visual triggers
     assert should_inspect_screen("mira qué arma es esta") is True
@@ -189,7 +194,7 @@ def test_record_seconds_mocked():
     import numpy as np
     import threading
     import time
-    from abi_coach.listener import AudioListener, ListenerConfig
+    from abi_coach.infrastructure.adapters.audio.listener import AudioListener, ListenerConfig
 
     config = ListenerConfig()
     listener = AudioListener(config)
@@ -234,8 +239,8 @@ nvidia:
 
 
 def test_provider_factory_missing_keys(monkeypatch):
-    from abi_coach.config import AppConfig, LLMConfig
-    from abi_coach.providers.factory import create_llm_provider
+    from abi_coach.infrastructure.adapters.llm.factory import create_llm_provider
+    from abi_coach.infrastructure.config.settings import AppConfig, LLMConfig
 
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
@@ -252,8 +257,8 @@ def test_provider_factory_missing_keys(monkeypatch):
 
 
 def test_nvidia_nim_provider_requires_openai():
-    from abi_coach.config import NvidiaConfig
-    from abi_coach.providers.nvidia import NvidiaNIMProvider
+    from abi_coach.infrastructure.adapters.llm.nvidia import NvidiaNIMProvider
+    from abi_coach.infrastructure.config.settings import NvidiaConfig
 
     cfg = NvidiaConfig()
     with pytest.raises(ImportError, match="uv add openai"):
@@ -261,9 +266,9 @@ def test_nvidia_nim_provider_requires_openai():
 
 
 def test_brain_with_mock_provider(tmp_path: Path):
-    from abi_coach.brain import Brain
-    from abi_coach.config import AppConfig
-    from abi_coach.providers.base import ProviderResponse
+    from abi_coach.application.orchestration.brain import Brain
+    from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
+    from abi_coach.infrastructure.config.settings import AppConfig
 
     call_log = {}
 
@@ -301,7 +306,7 @@ def test_brain_with_mock_provider(tmp_path: Path):
 
 
 def test_tactical_report_builder(tmp_path: Path):
-    from abi_coach.slices.reporting.builder import TacticalReportBuilder
+    from abi_coach.application.slices.reporting.builder import TacticalReportBuilder
 
     builder = (
         TacticalReportBuilder(title="Comparativa Balística", game_badge="ABI Copilot")

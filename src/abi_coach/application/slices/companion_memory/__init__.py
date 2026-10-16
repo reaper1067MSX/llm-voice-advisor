@@ -5,9 +5,13 @@ from abi_coach.application.slices.companion_memory.handler import (
     GetActiveProfileQuery,
     SaveMemoryCommand,
 )
+from abi_coach.application.slices.companion_memory.memory import CompanionMemory, MemoryItem
 
 __all__ = [
-    "SaveMemoryCommand",
-    "GetActiveProfileQuery",
+    "CompanionMemory",
     "CompanionMemoryHandler",
+    "GetActiveProfileQuery",
+    "MemoryItem",
+    "SaveMemoryCommand",
 ]
+

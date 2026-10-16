@@ -4,13 +4,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from abi_coach.archetypes import ArchetypeManager
-from abi_coach.brain import Brain
-from abi_coach.config import AppConfig
-from abi_coach.db import DatabaseManager
-from abi_coach.metatuning import MetaTuningEngine
-from abi_coach.providers.base import ProviderResponse
-from abi_coach.scaffolding import ArchetypeScaffolder
+from abi_coach.application.orchestration.brain import Brain
+from abi_coach.application.slices.archetypes.manager import ArchetypeManager
+from abi_coach.application.slices.archetypes.scaffolder import ArchetypeScaffolder
+from abi_coach.application.slices.metatuning.engine import MetaTuningEngine
+from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
+from abi_coach.infrastructure.config.settings import AppConfig
 
 
 class DummyProvider:

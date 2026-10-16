@@ -4,6 +4,9 @@ from pathlib import Path
 from PIL import Image
 import pytest
 
+from abi_coach.application.slices.companion_memory.memory import CompanionMemory
+from abi_coach.application.slices.tactical_rag.rag import KnowledgeRAG
+from abi_coach.application.slices.tactical_rag.reconciler import KnowledgeReconciler
 from abi_coach.domain.common.value_objects import ConfidenceScore, TopicKey
 from abi_coach.domain.entities.player_memory import PlayerMemory
 from abi_coach.domain.entities.tactical_fact import TacticalFact
@@ -12,9 +15,6 @@ from abi_coach.infrastructure.adapters.storage.sqlite_knowledge_repo import Sqli
 from abi_coach.infrastructure.adapters.storage.sqlite_manager import DatabaseManager
 from abi_coach.infrastructure.adapters.storage.sqlite_memory_repo import SqliteMemoryRepository
 from abi_coach.infrastructure.config.yaml_loader import AppConfig, CaptureConfig
-from abi_coach.slices.companion_memory.memory import CompanionMemory
-from abi_coach.slices.tactical_rag.rag import KnowledgeRAG
-from abi_coach.slices.tactical_rag.reconciler import KnowledgeReconciler
 
 
 @pytest.fixture

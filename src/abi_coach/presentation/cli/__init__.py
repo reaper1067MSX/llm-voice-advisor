@@ -1,6 +1,7 @@
 """Presentation CLI package."""
 
 from abi_coach.presentation.cli.cli_runner import (
+    check_api_keys,
     cmd_ask,
     cmd_list_models,
     cmd_list_voices,
@@ -11,6 +12,7 @@ from abi_coach.presentation.cli.cli_runner import (
 )
 
 __all__ = [
+    "check_api_keys",
     "main",
     "cmd_ask",
     "cmd_list_models",
@@ -19,3 +21,4 @@ __all__ = [
     "cmd_test_mic",
     "cmd_test_tts",
 ]
+

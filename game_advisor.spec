@@ -8,8 +8,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, co
 block_cipher = None
 
 # Datas: presets, initial knowledge data, and default configurations
-presets_src = 'presets' if Path('presets').is_dir() else 'src/abi_coach/presets'
-data_src = 'data' if (Path('data') / 'abi_knowledge.json').is_file() else 'src/abi_coach/data'
+presets_src = 'presets' if Path('presets').is_dir() else 'src/abi_coach/infrastructure/resources/presets'
+data_src = 'data' if (Path('data') / 'abi_knowledge.json').is_file() else 'src/abi_coach/infrastructure/resources/data'
 
 datas = [
     (presets_src, 'presets'),
@@ -100,6 +100,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    version='version_info.txt' if Path('version_info.txt').is_file() else None,
 )
 
 coll = COLLECT(

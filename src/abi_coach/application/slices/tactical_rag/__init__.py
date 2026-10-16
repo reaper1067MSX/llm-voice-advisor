@@ -5,9 +5,19 @@ from abi_coach.application.slices.tactical_rag.handler import (
     SearchKnowledgeQuery,
     TacticalRagHandler,
 )
+from abi_coach.application.slices.tactical_rag.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.application.slices.tactical_rag.reconciler import (
+    KnowledgeReconciler,
+    ReconciliationDiff,
+)
 
 __all__ = [
-    "SearchKnowledgeQuery",
+    "KnowledgeItem",
+    "KnowledgeRAG",
+    "KnowledgeReconciler",
     "ReconcileFactCommand",
+    "ReconciliationDiff",
+    "SearchKnowledgeQuery",
     "TacticalRagHandler",
 ]
+

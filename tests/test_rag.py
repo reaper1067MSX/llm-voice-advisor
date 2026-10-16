@@ -3,8 +3,8 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.db import DatabaseManager
-from abi_coach.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.application.slices.tactical_rag.rag import KnowledgeItem, KnowledgeRAG
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 
 
 def test_knowledge_rag_seed_and_search(tmp_path: Path):
@@ -68,9 +68,9 @@ def test_knowledge_rag_upsert_and_prompt_formatting(tmp_path: Path):
 
 
 def test_brain_integrates_rag_facts(tmp_path: Path):
-    from abi_coach.brain import Brain
-    from abi_coach.config import AppConfig
-    from abi_coach.providers.base import ProviderResponse
+    from abi_coach.application.orchestration.brain import Brain
+    from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
+    from abi_coach.infrastructure.config.settings import AppConfig
 
     captured_kwargs = {}
 
@@ -99,8 +99,8 @@ def test_brain_integrates_rag_facts(tmp_path: Path):
 
 
 def test_brain_fast_path_zero_llm(tmp_path: Path):
-    from abi_coach.brain import Brain
-    from abi_coach.config import AppConfig
+    from abi_coach.application.orchestration.brain import Brain
+    from abi_coach.infrastructure.config.settings import AppConfig
 
     class UnreachableProvider:
         def generate(self, *args, **kwargs):
@@ -126,7 +126,7 @@ def test_brain_fast_path_zero_llm(tmp_path: Path):
 
 
 def test_create_tactical_dashboard(tmp_path: Path):
-    from abi_coach.reports import create_tactical_dashboard
+    from abi_coach.application.slices.reporting.reports import create_tactical_dashboard
 
     memories = [
         {"topic": "loadouts", "feature": "weapon", "title": "FAL Principal", "content": "Mira 1x/4x", "pinned": True}

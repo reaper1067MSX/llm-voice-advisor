@@ -7,7 +7,7 @@ from abi_coach.domain.common.result import Result, fail, ok
 from abi_coach.domain.common.value_objects import TopicKey
 from abi_coach.domain.entities.player_memory import PlayerMemory
 from abi_coach.domain.ports.memory_port import MemoryRepositoryPort
-from abi_coach.slices.companion_memory.memory import CompanionMemory, MemoryItem
+from abi_coach.application.slices.companion_memory.memory import CompanionMemory, MemoryItem
 
 
 class SqliteMemoryRepository(MemoryRepositoryPort):

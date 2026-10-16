@@ -63,10 +63,13 @@ class GeminiAdapter(LLMProviderPort):
             if tool_callback:
                 tools_list.append(tool_callback)
 
+            max_out_tokens = getattr(
+                self.config, "max_output_tokens", getattr(self.config, "max_tokens", 800)
+            )
             gen_config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=self.config.temperature,
-                max_output_tokens=self.config.max_output_tokens,
+                max_output_tokens=max_out_tokens,
                 media_resolution=self._get_media_resolution(),
                 tools=tools_list if tools_list else None,
             )
@@ -78,12 +81,26 @@ class GeminiAdapter(LLMProviderPort):
             )
 
             latency = (time.perf_counter() - start_time) * 1000
-            in_tok = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-            out_tok = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+            report_title = None
+            report_html = None
+            if getattr(response, "function_calls", None):
+                for fc in response.function_calls:
+                    fc_args = getattr(fc, "args", {}) or {}
+                    report_title = fc_args.get("title", report_title)
+                    report_html = fc_args.get("html_body", report_html)
+                    if tool_callback:
+                        tool_callback(**fc_args)
+
+            spoken_text = (getattr(response, "text", None) or "").strip()
+            usage = getattr(response, "usage_metadata", None)
+            in_tok = getattr(usage, "prompt_token_count", 0) or 0
+            out_tok = getattr(usage, "candidates_token_count", 0) or 0
 
             return ok(
                 LLMResponseDTO(
-                    spoken_text=response.text or "",
+                    spoken_text=spoken_text,
+                    report_title=report_title,
+                    report_html=report_html,
                     tokens=TokenUsage(input_tokens=in_tok, output_tokens=out_tok),
                     latency_ms=latency,
                 )

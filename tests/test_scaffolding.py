@@ -3,8 +3,8 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.db import DatabaseManager
-from abi_coach.scaffolding import ArchetypeScaffolder
+from abi_coach.application.slices.archetypes.scaffolder import ArchetypeScaffolder
+from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 
 
 def test_archetype_detection_heuristic(tmp_path: Path):

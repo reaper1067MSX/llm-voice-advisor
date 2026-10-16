@@ -2,153 +2,128 @@
 
 A real-time voice gaming copilot with local GPU Whisper STT, Natural Edge-TTS,
 multimodal LLM inference, Clean Architecture + Hexagonal + Vertical Slices + Result Pattern.
+
+Uses PEP 562 lazy module attribute loading (__getattr__) so importing lightweight
+submodules (e.g. abi_coach.domain, abi_coach.infrastructure.config) does not eagerly load
+heavy hardware dependencies (faster_whisper, sounddevice, edge_tts, mss).
 """
 
-# Domain Layer (DDD Core & Result Pattern)
-from abi_coach.domain import (
-    ArmorTier,
-    ConfidenceScore,
-    DomainError,
-    EntityNotFoundError,
-    Failure,
-    GameContext,
-    LLMProviderPort,
-    LLMResponseDTO,
-    PlayerMemory,
-    Result,
-    Success,
-    TacticalFact,
-    TokenUsage,
-    TopicKey,
-    fail,
-    ok,
-)
+import importlib
+from typing import Any, Dict, Tuple
 
-# Application Layer (Vertical Slices & Middlewares)
-from abi_coach.application import (
-    AskTacticalAdviceCommand,
-    CompanionMemoryHandler,
-    ContextSwitchHandler,
-    ExceptionHandlingMiddleware,
-    ExecutionPipeline,
-    LoggingMiddleware,
-    MetaTuningHandler,
-    TacticalAdviceDTO,
-    TacticalAdviceHandler,
-    TacticalRagHandler,
-)
+__version__ = "0.2.0"
 
-# Infrastructure Layer (Hexagonal Adapters & Config)
-from abi_coach.infrastructure import (
-    AppConfig,
-    BrowserDisplayAdapter,
-    DatabaseManager,
-    EdgeTtsAudioOutputAdapter,
-    FasterWhisperAudioInputAdapter,
-    GeminiAdapter,
-    MindCacheLRU,
-    NvidiaNimAdapter,
-    SqliteKnowledgeRepository,
-    SqliteMemoryRepository,
-    TacticalReportBuilder,
-    WindowsScreenCaptureAdapter,
-    create_llm_adapter,
-    load_config,
-)
+_LAZY_IMPORTS: Dict[str, Tuple[str, str]] = {
+    # Domain Layer (DDD Core & Result Pattern)
+    "Result": ("abi_coach.domain", "Result"),
+    "Success": ("abi_coach.domain", "Success"),
+    "Failure": ("abi_coach.domain", "Failure"),
+    "ok": ("abi_coach.domain", "ok"),
+    "fail": ("abi_coach.domain", "fail"),
+    "DomainError": ("abi_coach.domain", "DomainError"),
+    "EntityNotFoundError": ("abi_coach.domain", "EntityNotFoundError"),
+    "TopicKey": ("abi_coach.domain", "TopicKey"),
+    "ArmorTier": ("abi_coach.domain", "ArmorTier"),
+    "ConfidenceScore": ("abi_coach.domain", "ConfidenceScore"),
+    "TokenUsage": ("abi_coach.domain", "TokenUsage"),
+    "GameContext": ("abi_coach.domain", "GameContext"),
+    "PlayerMemory": ("abi_coach.domain", "PlayerMemory"),
+    "TacticalFact": ("abi_coach.domain", "TacticalFact"),
+    "LLMProviderPort": ("abi_coach.domain", "LLMProviderPort"),
+    "LLMResponseDTO": ("abi_coach.domain", "LLMResponseDTO"),
+    # Application Layer (Vertical Slices & Middlewares)
+    "ExecutionPipeline": ("abi_coach.application", "ExecutionPipeline"),
+    "ExceptionHandlingMiddleware": ("abi_coach.application", "ExceptionHandlingMiddleware"),
+    "LoggingMiddleware": ("abi_coach.application", "LoggingMiddleware"),
+    "TacticalAdviceHandler": ("abi_coach.application", "TacticalAdviceHandler"),
+    "AskTacticalAdviceCommand": ("abi_coach.application", "AskTacticalAdviceCommand"),
+    "TacticalAdviceDTO": ("abi_coach.application", "TacticalAdviceDTO"),
+    "ContextSwitchHandler": ("abi_coach.application", "ContextSwitchHandler"),
+    "CompanionMemoryHandler": ("abi_coach.application", "CompanionMemoryHandler"),
+    "TacticalRagHandler": ("abi_coach.application", "TacticalRagHandler"),
+    "MetaTuningHandler": ("abi_coach.application", "MetaTuningHandler"),
+    # Infrastructure Layer (Hexagonal Adapters & Config)
+    "AppConfig": ("abi_coach.infrastructure.config.settings", "AppConfig"),
+    "load_config": ("abi_coach.infrastructure.config.settings", "load_config"),
+    "create_llm_adapter": ("abi_coach.infrastructure.adapters.llm.factory", "create_llm_adapter"),
+    "GeminiAdapter": ("abi_coach.infrastructure.adapters.llm.gemini_adapter", "GeminiAdapter"),
+    "NvidiaNimAdapter": ("abi_coach.infrastructure.adapters.llm.nvidia_adapter", "NvidiaNimAdapter"),
+    "DatabaseManager": ("abi_coach.infrastructure.adapters.storage.sqlite_manager", "DatabaseManager"),
+    "MindCacheLRU": ("abi_coach.infrastructure.adapters.storage.cache", "MindCacheLRU"),
+    "SqliteKnowledgeRepository": (
+        "abi_coach.infrastructure.adapters.storage.sqlite_knowledge_repo",
+        "SqliteKnowledgeRepository",
+    ),
+    "SqliteMemoryRepository": (
+        "abi_coach.infrastructure.adapters.storage.sqlite_memory_repo",
+        "SqliteMemoryRepository",
+    ),
+    "FasterWhisperAudioInputAdapter": (
+        "abi_coach.infrastructure.adapters.audio.faster_whisper_adapter",
+        "FasterWhisperAudioInputAdapter",
+    ),
+    "EdgeTtsAudioOutputAdapter": (
+        "abi_coach.infrastructure.adapters.audio.faster_whisper_adapter",
+        "EdgeTtsAudioOutputAdapter",
+    ),
+    "WindowsScreenCaptureAdapter": (
+        "abi_coach.infrastructure.adapters.vision.windows_capture_adapter",
+        "WindowsScreenCaptureAdapter",
+    ),
+    "BrowserDisplayAdapter": (
+        "abi_coach.infrastructure.adapters.reporting.browser_display_adapter",
+        "BrowserDisplayAdapter",
+    ),
+    "TacticalReportBuilder": (
+        "abi_coach.infrastructure.adapters.reporting.browser_display_adapter",
+        "TacticalReportBuilder",
+    ),
+    # Presentation Layer (Driving Adapters)
+    "main": ("abi_coach.presentation.cli.cli_runner", "main"),
+    "run_interactive_loop": ("abi_coach.presentation.voice.ptt_loop_runner", "run_interactive_loop"),
+    "should_inspect_screen": ("abi_coach.presentation.voice.ptt_loop_runner", "should_inspect_screen"),
+    "BANNER": ("abi_coach.presentation.voice.ptt_loop_runner", "BANNER"),
+    # Canonical Adapters, Orchestration & Vertical Slices
+    "AudioListener": ("abi_coach.infrastructure.adapters.audio.listener", "AudioListener"),
+    "Speaker": ("abi_coach.infrastructure.adapters.audio.speaker", "Speaker"),
+    "capture_screen": ("abi_coach.infrastructure.adapters.vision.capture", "capture_screen"),
+    "LLMProvider": ("abi_coach.infrastructure.adapters.llm.base", "LLMProvider"),
+    "create_llm_provider": ("abi_coach.infrastructure.adapters.llm.factory", "create_llm_provider"),
+    "Brain": ("abi_coach.application.orchestration.brain", "Brain"),
+    "CoachResponse": ("abi_coach.application.orchestration.brain", "CoachResponse"),
+    "Turn": ("abi_coach.application.orchestration.brain", "Turn"),
+    "load_preset": ("abi_coach.application.orchestration.brain", "load_preset"),
+    "ArchetypeManager": ("abi_coach.application.slices.archetypes", "ArchetypeManager"),
+    "ArchetypeScaffolder": ("abi_coach.application.slices.archetypes", "ArchetypeScaffolder"),
+    "DynamicEntity": ("abi_coach.application.slices.archetypes", "DynamicEntity"),
+    "TopicContext": ("abi_coach.application.slices.archetypes", "TopicContext"),
+    "KnowledgeItem": ("abi_coach.application.slices.tactical_rag", "KnowledgeItem"),
+    "KnowledgeRAG": ("abi_coach.application.slices.tactical_rag", "KnowledgeRAG"),
+    "KnowledgeReconciler": ("abi_coach.application.slices.tactical_rag", "KnowledgeReconciler"),
+    "ReconciliationDiff": ("abi_coach.application.slices.tactical_rag", "ReconciliationDiff"),
+    "CompanionMemory": ("abi_coach.application.slices.companion_memory", "CompanionMemory"),
+    "MemoryItem": ("abi_coach.application.slices.companion_memory", "MemoryItem"),
+    "MetaTuningEngine": ("abi_coach.application.slices.metatuning", "MetaTuningEngine"),
+    "MetaTuningResult": ("abi_coach.application.slices.metatuning", "MetaTuningResult"),
+    "ClarificationState": ("abi_coach.application.slices.metatuning", "ClarificationState"),
+    "create_html_report": ("abi_coach.application.slices.reporting", "create_html_report"),
+    "create_tactical_dashboard": ("abi_coach.application.slices.reporting", "create_tactical_dashboard"),
+}
 
-# Presentation Layer (Driving Adapters)
-from abi_coach.presentation import (
-    BANNER,
-    main,
-    run_interactive_loop,
-    should_inspect_screen,
-)
+__all__ = ["__version__", *_LAZY_IMPORTS.keys()]
 
-# Orchestration & Legacy Slices (100% Backward Compatibility)
-from abi_coach.core.audio import AudioListener, Speaker
-from abi_coach.core.llm import LLMProvider, create_llm_provider
-from abi_coach.core.vision import capture_screen
-from abi_coach.orchestration import Brain, CoachResponse, Turn, load_preset
-from abi_coach.slices.archetypes import ArchetypeManager, ArchetypeScaffolder, DynamicEntity, TopicContext
-from abi_coach.slices.companion_memory import CompanionMemory, MemoryItem
-from abi_coach.slices.metatuning import MetaTuningEngine, MetaTuningResult
-from abi_coach.slices.reporting import create_html_report, create_tactical_dashboard
-from abi_coach.slices.tactical_rag import KnowledgeItem, KnowledgeRAG, KnowledgeReconciler, ReconciliationDiff
 
-__version__ = "0.1.0"
+def __getattr__(name: str) -> Any:
+    """PEP 562 lazy attribute loader for abi_coach root package."""
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        module = importlib.import_module(module_path)
+        value = getattr(module, attr_name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-__all__ = [
-    "__version__",
-    # Domain
-    "Result",
-    "Success",
-    "Failure",
-    "ok",
-    "fail",
-    "DomainError",
-    "EntityNotFoundError",
-    "TopicKey",
-    "ArmorTier",
-    "ConfidenceScore",
-    "TokenUsage",
-    "GameContext",
-    "PlayerMemory",
-    "TacticalFact",
-    "LLMProviderPort",
-    "LLMResponseDTO",
-    # Application
-    "ExecutionPipeline",
-    "ExceptionHandlingMiddleware",
-    "LoggingMiddleware",
-    "TacticalAdviceHandler",
-    "AskTacticalAdviceCommand",
-    "TacticalAdviceDTO",
-    "ContextSwitchHandler",
-    "CompanionMemoryHandler",
-    "TacticalRagHandler",
-    "MetaTuningHandler",
-    # Infrastructure
-    "AppConfig",
-    "load_config",
-    "create_llm_adapter",
-    "GeminiAdapter",
-    "NvidiaNimAdapter",
-    "DatabaseManager",
-    "MindCacheLRU",
-    "SqliteKnowledgeRepository",
-    "SqliteMemoryRepository",
-    "FasterWhisperAudioInputAdapter",
-    "EdgeTtsAudioOutputAdapter",
-    "WindowsScreenCaptureAdapter",
-    "BrowserDisplayAdapter",
-    "TacticalReportBuilder",
-    # Presentation
-    "main",
-    "run_interactive_loop",
-    "should_inspect_screen",
-    "BANNER",
-    # Legacy & Shim Compatibility
-    "AudioListener",
-    "Speaker",
-    "capture_screen",
-    "LLMProvider",
-    "create_llm_provider",
-    "Brain",
-    "CoachResponse",
-    "Turn",
-    "load_preset",
-    "ArchetypeManager",
-    "ArchetypeScaffolder",
-    "DynamicEntity",
-    "TopicContext",
-    "KnowledgeItem",
-    "KnowledgeRAG",
-    "KnowledgeReconciler",
-    "ReconciliationDiff",
-    "CompanionMemory",
-    "MemoryItem",
-    "MetaTuningEngine",
-    "MetaTuningResult",
-    "create_html_report",
-    "create_tactical_dashboard",
-]
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
