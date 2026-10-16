@@ -90,7 +90,7 @@ echo  - Si tienes 2 pantallas, las tablas y graficos se abriran solos en tu segu
 echo  - Compatible con Discord, NVIDIA Broadcast y tu juego al mismo tiempo.
 echo.
 
-"%UV_BIN%" run python -m abi_coach.main --game generic %*
+"%UV_BIN%" run python -m abi_coach %*
 set "EXIT_CODE=%errorlevel%"
 
 if not "%EXIT_CODE%"=="0" goto :ERROR_EXIT

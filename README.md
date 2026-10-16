@@ -14,8 +14,8 @@ Para que cualquier persona pueda usar este proyecto sin complicaciones técnicas
 
 | Pregunta | Respuesta sencilla |
 | :--- | :--- |
-| **¿Tengo que instalar Python a mano?** | **NO.** Si no tienes Python, el script `instalar_dependencias.bat` o `iniciar_advisor.bat` lo descarga y configura automáticamente de forma 100% aislada. |
-| **¿Tengo que instalar UV a mano?** | **NO.** Al hacer doble clic en `instalar_dependencias.bat` o `iniciar_advisor.bat`, el sistema detecta si lo tienes; si no, lo instala automáticamente en 5 segundos. |
+| **¿Tengo que instalar Python a mano?** | **NO.** Si no tienes Python, el script `instalar_dependencias.bat` o `game_advisor.bat` lo descarga y configura automáticamente de forma 100% aislada. |
+| **¿Tengo que instalar UV a mano?** | **NO.** Al hacer doble clic en `instalar_dependencias.bat` o `game_advisor.bat`, el sistema detecta si lo tienes; si no, lo instala automáticamente en 5 segundos. |
 | **¿Qué drivers de NVIDIA necesito?** | Simplemente tener los **drivers normales de tu tarjeta gráfica NVIDIA actualizados** (los Game Ready Drivers que actualizas desde la app de [NVIDIA GeForce Experience](https://www.nvidia.com/es-la/geforce/geforce-experience/) o [NVIDIA App](https://www.nvidia.com/es-la/software/nvidia-app/)). **NO** necesitas instalar CUDA Toolkit, ni C++, ni Visual Studio. |
 | **¿Y si mi PC tiene tarjeta gráfica AMD, Intel o no tiene NVIDIA?** | **Funciona igual.** Si el programa no detecta una tarjeta NVIDIA compatible, se activa automáticamente el modo CPU de Whisper sin dar errores. |
 | **¿Qué pasa si solo tengo Microsoft Edge instalado?** | **Funciona directamente.** El programa busca primero Firefox, y si no lo tienes, usa de forma nativa el **Microsoft Edge** que ya viene preinstalado en Windows 10 y 11. |
@@ -76,7 +76,7 @@ Haz doble clic en:
 ```text
 👉 instalar_dependencias.bat
 ```
-*(O también en su alias `setup.bat`). El instalador verificará uv, instalará Python 3.12, descargará todas las librerías necesarias y te ayudará a colocar tu clave de Gemini.*
+*El instalador verificará uv, instalará Python 3.12, descargará todas las librerías necesarias y te ayudará a colocar tu clave de Gemini.*
 
 #### Método 2 (Por consola / 1 solo comando):
 Si estás usando PowerShell o CMD dentro de la carpeta del proyecto:
@@ -100,17 +100,17 @@ Para que el copiloto pueda razonar tus preguntas y ver tu pantalla, utiliza la i
    ```env
    GEMINI_API_KEY=AIzaSyTuClaveDeGoogleGeminiAqui
    ```
-   *(Si usas `iniciar_advisor.bat` o `instalar_dependencias.bat`, la ventana te la pedirá directamente y la guardará por ti).*
+   *(Si usas `game_advisor.bat` o `instalar_dependencias.bat`, la ventana te la pedirá directamente y la guardará por ti).*
 
 ---
 
 ## 🚀 Inicio Rápido con 1 Clic
 
-El proyecto incluye lanzadores con **inyección automática del System Prompt de IA** según el juego:
+El proyecto incluye el lanzador principal **`game_advisor.bat`**:
 
 * **🎮 Copiloto Multijuego General:** Haz doble clic en **`game_advisor.bat`**  
   *Inyecta el prompt de Asesor Universal: visión en vivo de HUD, análisis de interfaz, loot, inventario y dashboards para cualquier videojuego.*
-* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Haz doble clic en **`iniciar_coach_abi.bat`**  
+* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Ejecuta `game_advisor.bat --game abi` (o cámbialo en `config.yaml`).  
   *Inyecta el prompt militar y económico de ABI: balística de S7, penetración de blindaje por calibre, valor por casilla y alijo.*
 
 Cuando veas en la consola:
@@ -132,7 +132,7 @@ Para apagar cualquier copiloto al terminar de jugar y liberar inmediatamente la 
 
 Además de los archivos `.bat`, el proyecto cuenta con una potente Interfaz de Línea de Comandos (CLI) que te permite alternar juegos, realizar diagnósticos, probar componentes individuales y hacer consultas sin micrófono.
 
-Puedes invocar los comandos usando `uv run game-advisor <comando>` (o `python -m abi_coach.main <comando>`):
+Puedes invocar los comandos usando `uv run game-advisor <comando>` (o `uv run python -m abi_coach <comando>`):
 
 | Comando / Parámetro | Acción y Utilidad | ¿Consume Tokens de Gemini? |
 | :--- | :--- | :---: |
@@ -214,7 +214,7 @@ uv run llm-voice-advisor --list-models
    * Si tienes dos pantallas, mantén el juego en la pantalla principal (DISPLAY1) y tu pantalla secundaria (DISPLAY2) visible.
    * Cada vez que tu consulta involucre números, comparativas de daño de munición o valor de objetos, el copiloto generará un dashboard interactivo en HTML con **Chart.js** y lo **abrirá y maximizará automáticamente en tu segundo monitor** sin desviar el foco de tu juego ni hacer parpadear la barra de tareas.
 4. **Para apagar el copiloto al terminar:**
-   * Haz doble clic en **`detener_advisor.bat`** o presiona `Ctrl+C` en la consola. Todos los procesos de audio, GPU y micrófono se cerrarán inmediatamente sin dejar procesos colgados.
+   * Haz doble clic en **`detener.bat`** o presiona `Ctrl+C` en la consola. Todos los procesos de audio, GPU y micrófono se cerrarán inmediatamente sin dejar procesos colgados.
 
 ---
 
