@@ -101,6 +101,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='version_info.txt' if Path('version_info.txt').is_file() else None,
+    icon='assets/app_icon.ico' if Path('assets/app_icon.ico').is_file() else None,
 )
 
 coll = COLLECT(
