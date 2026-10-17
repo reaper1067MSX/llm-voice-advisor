@@ -162,7 +162,7 @@ def main():
     # 6. Crear guía rápida para el usuario final (LEEME.txt)
     readme_path = dist_dir / "LEEME.txt"
     readme_content = """==============================================================================
-  LLM GAME ADVISOR v0.2.0 — Copiloto Táctico y Analista por Voz para Videojuegos
+  LLM GAME ADVISOR v0.2.1 — Copiloto Táctico y Analista por Voz para Videojuegos
 ==============================================================================
 
 ¡Bienvenido! Este paquete es completamente portable y autónomo.
@@ -231,7 +231,7 @@ automáticamente en tu segundo monitor.
     print("  * LEEME.txt generado con exito en dist/")
 
     # 7. Empaquetar en archivo ZIP para GitHub Releases
-    zip_name = "game-advisor-windows-x64-v0.2.0.zip"
+    zip_name = "game-advisor-windows-x64-v0.2.1.zip"
     zip_path = root / "dist" / zip_name
     print(f"\n>> Comprimiendo paquete release para GitHub: {zip_name}...", flush=True)
     import zipfile

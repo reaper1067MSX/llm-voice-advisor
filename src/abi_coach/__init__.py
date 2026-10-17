@@ -11,7 +11,7 @@ heavy hardware dependencies (faster_whisper, sounddevice, edge_tts, mss).
 import importlib
 from typing import Any, Dict, Tuple
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 _LAZY_IMPORTS: Dict[str, Tuple[str, str]] = {
     # Domain Layer (DDD Core & Result Pattern)

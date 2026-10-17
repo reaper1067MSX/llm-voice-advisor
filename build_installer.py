@@ -97,7 +97,7 @@ def build_installer() -> None:
         print("❌ Error al compilar con Inno Setup.")
         sys.exit(res.returncode)
 
-    installer_output = Path("dist/installer/CompanionAdvisor-Installer-v0.2.0.exe")
+    installer_output = Path("dist/installer/CompanionAdvisor-Installer-v0.2.1.exe")
     if installer_output.is_file():
         size_mb = installer_output.stat().st_size / (1024 * 1024)
         print("\n" + "=" * 76)
