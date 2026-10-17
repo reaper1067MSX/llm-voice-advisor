@@ -39,3 +39,27 @@ gh pr merge --squash --delete-branch
 git checkout master
 git pull origin master
 ```
+
+## 3. Estándar para Planes de Arquitectura Compleja
+
+Cuando una tarea involucre refactorizaciones estructurales, nuevos subsistemas, orquestación de agentes o integraciones de alta complejidad, el artefacto o plan de diseño DEBE cumplir con los siguientes estándares rigurosos antes de la implementación:
+
+1. **Fuentes y Recursos Confiables**:
+   * Citar documentación oficial, bibliotecas existentes, RFCs o literatura de ingeniería de software relevante. No inventar mecanismos caseros si existe un estándar probado en la industria (ej. Silero VAD, Blackboard Pattern, Supervisor-Worker).
+
+2. **Diagramas Formales de Arquitectura (Mermaid)**:
+   * **Diagrama de Clases (`classDiagram`)**: Entidades, Value Objects, Puertos/Interfaces, Adaptadores y cómo se relacionan (herencia, composición, dependencia).
+   * **Diagrama de Secuencia (`sequenceDiagram`)**: Flujo cronológico de mensajes, llamadas síncronas/asíncronas y manejo de estados y excepciones.
+
+3. **Patrones de Diseño Formales**:
+   * Identificar y justificar explícitamente los patrones aplicados (ej. State Pattern, Blackboard, Supervisor-Worker, Strategy, Observer, Result Pattern, Middleware Pipeline).
+
+4. **Principios de Ingeniería de Software**:
+   * **SOLID**: Demostrar SRP (responsabilidad única), OCP (abierto/cerrado), LSP (sustitución), ISP (segregación de interfaces) y DIP (inversión de dependencias).
+   * **KISS & YAGNI**: Mantener la solución lo más simple posible sin sobreingeniería innecesaria.
+   * **DRY**: Evitar duplicación de lógica mediante abstracciones limpias.
+   * **Clean Architecture**: Regla de dependencia unidireccional (Dominio <- Aplicación <- Infraestructura / Presentación).
+
+5. **Mapeo Explícito en el Árbol de Código**:
+   * Listar las rutas exactas de archivos a crear o modificar (`src/...`, `tests/...`, `presets/...`) indicando qué clase o función residirá en cada ubicación.
+

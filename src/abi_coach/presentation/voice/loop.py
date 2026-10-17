@@ -21,8 +21,8 @@ BANNER = """
            {title}
 ==================================================================
   * Preset de juego: {game_display}
-  * Optimizado para 1440p (DISPLAY1) + Navegador en DISPLAY2
-  * Push-to-Talk: Mantén presionado [{key}] para hablar
+  * Audio: Manos Libres con Silero Neural VAD (filtra teclado y respiración)
+  * Comandos de voz: "Silencio de radio" / "Reanuda" para foco táctico
   * Transcripción local en GPU: {gpu}
   * Voz de respuesta: {voice}
   * Modelo visual: {model}
@@ -155,18 +155,16 @@ def run_interactive_loop(config) -> None:
         pass
 
     print("\n" + "=" * 66, flush=True)
-    print("✅ ¡ABI Voice Coach listo para el combate!", flush=True)
-    print(f"   {mode_title}", flush=True)
-    if is_vad:
-        print("👉 Simplemente HABLA cuando quieras en tu micrófono (sin tocar teclas).")
-        print(f"   (También puedes usar [{target_key}] si prefieres pulsar).")
-    else:
-        print(f"👉 Mantén presionado [{target_key}] mientras hablas y suéltalo al terminar.")
-    print("   • Al detectar voz: bip agudo + captura de pantalla + grabación.")
-    print("   • Al callar: bip grave + transcripción GPU + análisis Gemini + respuesta por voz.")
-    print("   • Para salir: Presiona Ctrl+C o cierra la ventana (liberación total de memoria).")
+    print("✅ ¡Game Advisor / ABI Coach listo para la partida!", flush=True)
+    print("   🎙️ MODO MANOS LIBRES ACTIVO (Silero Neural VAD)", flush=True)
+    print("👉 Habla naturalmente en tu micrófono. El modelo neural filtra teclados y respiración.")
+    print("   • Al detectar tu voz: bip agudo + grabación inteligente.")
+    print("   • Al terminar de hablar: bip grave + transcripción GPU + respuesta instantánea.")
+    print("   • Control de foco táctico: Di 'Silencio de radio' o 'Modo concentración' para callar sugerencias.")
+    print("   • Reanudar comunicación: Di 'Reanuda' o 'Companion activo'.")
+    print("   • Salir: Presiona Ctrl+C o cierra la ventana.")
     if game_lower not in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
-        print("   • 💡 Conmutador en caliente: Di 'Vamos a jugar [Juego]' para auto-configurar y activar otro juego.", flush=True)
+        print("   • 💡 Conmutador en caliente: Di 'Vamos a jugar [Juego]' para cambiar de juego en vivo.", flush=True)
     print("=" * 66 + "\n", flush=True)
 
     # Vocal greeting to confirm sound output and indicate readiness

@@ -11,7 +11,7 @@ import yaml
 @dataclass
 class GeminiConfig:
     model: str = "gemini-3.1-flash-lite-preview"
-    media_resolution: str = "high"
+    media_resolution: str = "medium"
     temperature: float = 0.3
     api_key: Optional[str] = None
     game: str = "generic"
@@ -44,9 +44,9 @@ class CaptureRegion:
 @dataclass
 class CaptureConfig:
     monitor_index: int = 1
-    downscale_width: int = 1920
-    downscale_height: int = 1080
-    jpeg_quality: int = 85
+    downscale_width: int = 1280
+    downscale_height: int = 720
+    jpeg_quality: int = 75
     save_captures: bool = False
     capture_dir: str = "captures"
     regions: Dict[str, CaptureRegion] = field(default_factory=dict)
@@ -60,8 +60,8 @@ class ListenerConfig:
     mouse_button: str = "x2"
     sample_rate: int = 16000
     min_duration_sec: float = 0.4
-    silence_duration_sec: float = 1.0
-    vad_threshold: float = 0.012
+    silence_duration_sec: float = 1.6
+    vad_threshold: float = 0.020
     wake_word: Optional[str] = None
     whisper_model: str = "large-v3-turbo"
     whisper_device: str = "cuda"
@@ -161,7 +161,7 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     api_key = os.getenv("GEMINI_API_KEY") or gemini_raw.get("api_key")
     gemini_cfg = GeminiConfig(
         model=gemini_raw.get("model", "gemini-3.1-flash-lite-preview"),
-        media_resolution=gemini_raw.get("media_resolution", "high"),
+        media_resolution=gemini_raw.get("media_resolution", "medium"),
         temperature=float(gemini_raw.get("temperature", 0.3)),
         api_key=api_key,
         game=str(gemini_raw.get("game", "generic")).lower(),
@@ -182,9 +182,9 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
 
     cap_cfg = CaptureConfig(
         monitor_index=int(cap_raw.get("monitor_index", 1)),
-        downscale_width=int(cap_raw.get("downscale_width", 1920)),
-        downscale_height=int(cap_raw.get("downscale_height", 1080)),
-        jpeg_quality=int(cap_raw.get("jpeg_quality", 85)),
+        downscale_width=int(cap_raw.get("downscale_width", 1280)),
+        downscale_height=int(cap_raw.get("downscale_height", 720)),
+        jpeg_quality=int(cap_raw.get("jpeg_quality", 75)),
         save_captures=bool(cap_raw.get("save_captures", False)),
         capture_dir=str(cap_raw.get("capture_dir", "captures")),
         regions=regions,
@@ -198,8 +198,8 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         mouse_button=str(lis_raw.get("mouse_button", "x2")).lower(),
         sample_rate=int(lis_raw.get("sample_rate", 16000)),
         min_duration_sec=float(lis_raw.get("min_duration_sec", 0.4)),
-        silence_duration_sec=float(lis_raw.get("silence_duration_sec", 1.0)),
-        vad_threshold=float(lis_raw.get("vad_threshold", 0.012)),
+        silence_duration_sec=float(lis_raw.get("silence_duration_sec", 1.6)),
+        vad_threshold=float(lis_raw.get("vad_threshold", 0.020)),
         wake_word=lis_raw.get("wake_word"),
         whisper_model=str(lis_raw.get("whisper_model", "large-v3-turbo")),
         whisper_device=str(lis_raw.get("whisper_device", "cuda")),

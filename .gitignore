@@ -20,3 +20,5 @@ data/*.sqlite3*
 data/*.db
 *.sqlite3*
 *.db
+logs/
+*.jsonl

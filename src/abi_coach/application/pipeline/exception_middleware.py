@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 import logging
 from abi_coach.domain.common.errors import SystemUnexpectedError
 from abi_coach.domain.common.result import Failure, Result, fail
+from abi_coach.infrastructure.adapters.logging.structured_logger import log_exception
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,14 @@ class ExceptionHandlingMiddleware:
                 "Unhandled system exception intercepted by pipeline barrier: %s",
                 exc,
                 exc_info=True,
+            )
+            # Record in structured JSON Lines for machine diagnostics
+            cmd_prompt = getattr(command, "prompt", getattr(command, "user_query", ""))
+            log_exception(
+                component="ExecutionPipeline",
+                action=type(command).__name__,
+                exc=exc,
+                user_prompt=str(cmd_prompt),
             )
             err = SystemUnexpectedError(
                 code="SYSTEM_UNEXPECTED_EXCEPTION",

@@ -10,7 +10,7 @@ gemini:
   # Modelo ultra rápido para visión y análisis con cero saturación
   model: "gemini-3.1-flash-lite-preview"
   # Opciones: high, medium, low (en Gemini 3 / 2.5 regula la resolución interna de imagen)
-  media_resolution: "high"
+  media_resolution: "medium"
   temperature: 0.3
 
 nvidia:
@@ -25,9 +25,9 @@ capture:
   # Monitor del juego (1 = DISPLAY1 2560x1440 primario)
   monitor_index: 1
   # Resolución de salida para la captura completa (Lanczos downscale)
-  downscale_width: 1920
-  downscale_height: 1080
-  jpeg_quality: 85
+  downscale_width: 1280
+  downscale_height: 720
+  jpeg_quality: 75
   # Guardar copia en disco de las capturas para depuración
   save_captures: false
   capture_dir: "captures"
@@ -47,20 +47,13 @@ capture:
 listener:
   # Modo de escucha:
   #   "continuous" = Manos libres (VAD): Habla naturalmente, detecta tu voz y responde sin tocar teclas.
-  #   "ptt" = Push-to-Talk exclusivo (mantener tecla para hablar).
-  #   "hybrid" = Escucha continua por voz y además responde a la tecla F9.
   mode: "continuous"
 
-  # Tecla para Push-to-Talk (activa si usas modo ptt o hybrid)
-  ptt_key: "f9"
-  mouse_button_enabled: false
-  mouse_button: "x2"
-
   sample_rate: 16000
-  # Umbral de detección de voz (RMS): 0.010 a 0.020 (adecuado para Corsair Virtuoso)
-  vad_threshold: 0.012
-  # Segundos de silencio para considerar que terminaste de formular tu pregunta
-  silence_duration_sec: 1.0
+  # Umbral de detección de voz (Silero VAD / RMS): Silero filtra ruido de tecleo y respiración
+  vad_threshold: 0.020
+  # Segundos de silencio para considerar que terminaste de formular tu pregunta (1.6s evita cortes al pensar)
+  silence_duration_sec: 1.6
   # Duración mínima de voz (ignora carraspeos o ruidos < 0.4s)
   min_duration_sec: 0.4
 

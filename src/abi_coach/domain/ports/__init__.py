@@ -1,6 +1,7 @@
 """Domain Outbound Ports package (Hexagonal Architecture)."""
 
 from abi_coach.domain.ports.audio_port import AudioInputPort, AudioOutputPort
+from abi_coach.domain.ports.blackboard_port import BlackboardPort
 from abi_coach.domain.ports.knowledge_port import KnowledgeRepositoryPort
 from abi_coach.domain.ports.llm_port import LLMProviderPort, LLMResponseDTO
 from abi_coach.domain.ports.memory_port import MemoryRepositoryPort
@@ -16,4 +17,5 @@ __all__ = [
     "ScreenCapturePort",
     "ScreenCaptureResultDTO",
     "ReportDisplayPort",
+    "BlackboardPort",
 ]
