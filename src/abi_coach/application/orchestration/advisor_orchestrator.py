@@ -31,6 +31,26 @@ from abi_coach.infrastructure.adapters.storage.in_memory_blackboard import InMem
 from abi_coach.infrastructure.config.settings import AppConfig
 
 
+@dataclass
+class AdvisorServices:
+    """Parameter Object encapsulating optional domain, memory, and infrastructure dependencies."""
+
+    db: Optional[DatabaseManager] = None
+    memory: Optional[CompanionMemory] = None
+    rag: Optional[KnowledgeRAG] = None
+    reconciler: Optional[KnowledgeReconciler] = None
+    blackboard: Optional[BlackboardPort] = None
+    fsm: Optional[Any] = None
+    archetype_mgr: Optional[ArchetypeManager] = None
+    scaffolder: Optional[ArchetypeScaffolder] = None
+    metatuning: Optional[MetaTuningEngine] = None
+    history_mgr: Optional[ConversationHistoryManager] = None
+    report_coordinator: Optional[TacticalReportToolCoordinator] = None
+    factual_resolver: Optional[ContextFactualResolver] = None
+    prompt_pipeline: Optional[SystemPromptEnricherPipeline] = None
+    context_switch_use_case: Optional[GameContextSwitchUseCase] = None
+
+
 class AdvisorOrchestrator:
     """Unified generic orchestrator coordinating tactical interaction resolution."""
 
@@ -38,58 +58,51 @@ class AdvisorOrchestrator:
         self,
         config: Optional[AppConfig] = None,
         provider: Optional[LLMProvider] = None,
+        services: Optional[AdvisorServices] = None,
         report_opener: Optional[Callable[[str], Any]] = None,
-        memory: Optional[CompanionMemory] = None,
-        rag: Optional[KnowledgeRAG] = None,
-        reconciler: Optional[KnowledgeReconciler] = None,
-        db: Optional[DatabaseManager] = None,
-        blackboard: Optional[BlackboardPort] = None,
-        fsm: Optional[Any] = None,
-        prompt_pipeline: Optional[SystemPromptEnricherPipeline] = None,
-        history_mgr: Optional[ConversationHistoryManager] = None,
-        report_coordinator: Optional[TacticalReportToolCoordinator] = None,
-        factual_resolver: Optional[ContextFactualResolver] = None,
-        context_switch_use_case: Optional[GameContextSwitchUseCase] = None,
-        archetype_mgr: Optional[ArchetypeManager] = None,
-        scaffolder: Optional[ArchetypeScaffolder] = None,
-        metatuning: Optional[MetaTuningEngine] = None,
+        **kwargs: Any,
     ) -> None:
         from abi_coach.application.orchestration.fsm import TacticalFSM
 
         self.config, self.report_opener = config or AppConfig(), report_opener
         self.provider = provider or create_llm_provider(self.config)
-        self.blackboard, self.fsm = blackboard or InMemoryBlackboard(), fsm or TacticalFSM()
-        self.db = db or getattr(memory, "db", None) or getattr(rag, "db", None) or getattr(reconciler, "db", None) or DatabaseManager()
-        self.archetype_mgr = archetype_mgr or ArchetypeManager(self.db)
-        self.scaffolder = scaffolder or ArchetypeScaffolder(self.db, self.archetype_mgr)
+        svc = services or AdvisorServices()
+        for k, v in kwargs.items():
+            if hasattr(svc, k) and getattr(svc, k) is None:
+                setattr(svc, k, v)
+
+        self.blackboard, self.fsm = svc.blackboard or InMemoryBlackboard(), svc.fsm or TacticalFSM()
+        self.db = svc.db or getattr(svc.memory, "db", None) or getattr(svc.rag, "db", None) or getattr(svc.reconciler, "db", None) or DatabaseManager()
+        self.archetype_mgr = svc.archetype_mgr or ArchetypeManager(self.db)
+        self.scaffolder = svc.scaffolder or ArchetypeScaffolder(self.db, self.archetype_mgr)
         self.active_context_id = getattr(self.config.gemini, "game", "generic") or "generic"
-        self.memory = memory or CompanionMemory(self.db, default_game=self.active_context_id)
-        self.rag = rag or KnowledgeRAG(self.db, default_game=self.active_context_id)
-        self.reconciler = reconciler or KnowledgeReconciler(self.db, self.rag)
+        self.memory = svc.memory or CompanionMemory(self.db, default_game=self.active_context_id)
+        self.rag = svc.rag or KnowledgeRAG(self.db, default_game=self.active_context_id)
+        self.reconciler = svc.reconciler or KnowledgeReconciler(self.db, self.rag)
 
         if not self.archetype_mgr.get_context(self.active_context_id):
             dname = "Arena Breakout: Infinite" if self.active_context_id in ("abi", "arena_breakout", "arena_breakout_infinite") else ("Game Advisor Universal" if self.active_context_id == "generic" else None)
             self.scaffolder.bootstrap_context(context_id=self.active_context_id, display_name=dname, activate=True)
 
-        self.metatuning = metatuning or MetaTuningEngine(db=self.db, archetype_mgr=self.archetype_mgr, scaffolder=self.scaffolder, config=self.config, report_opener=self.report_opener)
+        self.metatuning = svc.metatuning or MetaTuningEngine(db=self.db, archetype_mgr=self.archetype_mgr, scaffolder=self.scaffolder, config=self.config, report_opener=self.report_opener)
         self.pipeline = ExecutionPipeline([ExceptionHandlingMiddleware(), LoggingMiddleware()])
         self._prompt_registry = PromptTemplateRegistry()
-        self.prompt_pipeline = prompt_pipeline or SystemPromptEnricherPipeline(self._prompt_registry)
-        self.history_mgr = history_mgr or ConversationHistoryManager(50)
+        self.prompt_pipeline = svc.prompt_pipeline or SystemPromptEnricherPipeline(self._prompt_registry)
+        self.history_mgr = svc.history_mgr or ConversationHistoryManager(50)
         self.history: List[Turn] = self.history_mgr._turns
 
         rep = getattr(self.config, "reports", None)
-        self.report_coordinator = report_coordinator or TacticalReportToolCoordinator(
+        self.report_coordinator = svc.report_coordinator or TacticalReportToolCoordinator(
             output_dir=getattr(rep, "output_dir", None), auto_open=getattr(rep, "auto_open_browser", True),
             opener=self.report_opener, preferred_browser=getattr(rep, "preferred_browser", None),
             focus_browser=getattr(rep, "focus_browser", False),
         )
-        self.context_switch_use_case = context_switch_use_case or GameContextSwitchUseCase(
+        self.context_switch_use_case = svc.context_switch_use_case or GameContextSwitchUseCase(
             archetype_mgr=self.archetype_mgr, scaffolder=self.scaffolder,
             report_coordinator=self.report_coordinator, history_mgr=self.history_mgr,
             config=self.config, memory=self.memory, rag=self.rag,
         )
-        self.factual_resolver = factual_resolver or ContextFactualResolver(rag=self.rag, archetype_mgr=self.archetype_mgr)
+        self.factual_resolver = svc.factual_resolver or ContextFactualResolver(rag=self.rag, archetype_mgr=self.archetype_mgr)
 
     @property
     def client(self) -> Any: return getattr(self.provider, "client", None)

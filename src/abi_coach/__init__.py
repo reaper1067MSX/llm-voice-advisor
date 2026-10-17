@@ -11,7 +11,9 @@ heavy hardware dependencies (faster_whisper, sounddevice, edge_tts, mss).
 import importlib
 from typing import Any, Dict, Tuple
 
-__version__ = "0.2.3"
+from abi_coach.infrastructure.config.version import APP_VERSION
+
+__version__ = APP_VERSION
 
 _LAZY_IMPORTS: Dict[str, Tuple[str, str]] = {
     # Domain Layer (DDD Core & Result Pattern)
