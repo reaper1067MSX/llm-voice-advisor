@@ -44,7 +44,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             background-color: var(--bg-primary);
             color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding: 24px;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px;
             line-height: 1.5;
         }}
         .header {{
@@ -56,7 +58,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             margin-bottom: 24px;
         }}
         .header h1 {{
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             color: var(--accent);
             display: flex;
             align-items: center;
@@ -78,13 +80,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .card {{
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 24px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }}
         .card h2 {{
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             margin-bottom: 14px;
             color: var(--text-primary);
             border-left: 4px solid var(--accent);
@@ -99,9 +101,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             overflow: hidden;
         }}
         th, td {{
-            padding: 12px 16px;
+            padding: 10px 14px;
             text-align: left;
             border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
         }}
         th {{
             background-color: rgba(245, 158, 11, 0.1);
@@ -116,9 +119,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }}
         .chart-container {{
             position: relative;
-            height: 340px;
+            height: 280px;
+            max-height: 320px;
+            max-width: 920px;
             width: 100%;
-            margin: 16px 0;
+            margin: 16px auto;
+        }}
+        .chart-container canvas {{
+            max-height: 280px !important;
         }}
         .footer {{
             margin-top: 40px;

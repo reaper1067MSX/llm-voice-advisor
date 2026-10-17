@@ -384,14 +384,14 @@ def test_clean_root_directory_structure():
 
 
 def test_v021_version_info_and_smartscreen_release_helpers(tmp_path: Path):
-    """Verify v0.2.1 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
+    """Verify v0.2.2 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
     import importlib.util
 
     project_root = Path(abi_coach.__file__).resolve().parent.parent.parent
-    assert abi_coach.__version__ == "0.2.1"
+    assert abi_coach.__version__ == "0.2.2"
 
     pyproject_text = (project_root / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.2.1"' in pyproject_text
+    assert 'version = "0.2.2"' in pyproject_text
 
     version_info_path = project_root / "version_info.txt"
     assert version_info_path.is_file()
@@ -399,8 +399,8 @@ def test_v021_version_info_and_smartscreen_release_helpers(tmp_path: Path):
     assert "VSVersionInfo(" in v_text
     assert "StringStruct('CompanyName', 'Santiago Arguello')" in v_text
     assert "StringStruct('ProductName', 'LLM Game Advisor')" in v_text
-    assert "StringStruct('FileVersion', '0.2.1.0')" in v_text
-    assert "filevers=(0, 2, 1, 0)" in v_text
+    assert "StringStruct('FileVersion', '0.2.2.0')" in v_text
+    assert "filevers=(0, 2, 2, 0)" in v_text
 
     spec_text = (project_root / "game_advisor.spec").read_text(encoding="utf-8")
     assert "version_info.txt" in spec_text
@@ -442,6 +442,134 @@ def test_kaspersky_pdm_exploit_heuristics_eliminated():
                 violations.append(f"{py_file.relative_to(project_root)}: contains '{pattern}'")
 
     assert not violations, f"Detected suspicious Win32 APIs in production code: {violations}"
+
+
+def test_tactical_fsm_silence_and_resume_interception():
+    """Verify TacticalFSM voice command interception for silence and resume."""
+    from abi_coach.application.orchestration.fsm import TacticalFSM
+    from abi_coach.domain.entities.tactical_state import TacticalState
+
+    fsm = TacticalFSM(initial_state=TacticalState.EXPLORING)
+    assert fsm.can_suggest_proactively() is True
+
+    # Test silence commands
+    res = fsm.intercept_voice_command("Silencio de radio")
+    assert res == "Copiado, silencio de radio activo. Concentración total."
+    assert fsm.state == TacticalState.RADIO_SILENCE
+    assert fsm.can_suggest_proactively() is False
+
+    # Test accent and normalization
+    res2 = fsm.intercept_voice_command("¡Modo concentración!")
+    assert res2 == "Copiado, silencio de radio activo. Concentración total."
+    assert fsm.state == TacticalState.RADIO_SILENCE
+
+    # Test resume commands
+    res3 = fsm.intercept_voice_command("Reanuda")
+    assert res3 == "Entendido, canal abierto. Te cubro las espaldas."
+    assert fsm.state == TacticalState.EXPLORING
+    assert fsm.can_suggest_proactively() is True
+
+    # Test normal query is not intercepted
+    assert fsm.intercept_voice_command("¿Qué munición recomiendas?") is None
+
+
+def test_in_memory_blackboard_operations():
+    """Verify thread-safe InMemoryBlackboard operations and state updates."""
+    from abi_coach.domain.entities.tactical_state import TacticalState
+    from abi_coach.infrastructure.adapters.storage.in_memory_blackboard import InMemoryBlackboard
+
+    bb = InMemoryBlackboard()
+    initial = bb.get_state()
+    assert initial.game_id == "generic"
+    assert initial.state == TacticalState.EXPLORING
+    assert initial.danger_level == 0.0
+
+    updated = bb.update_state(
+        game_id="abi",
+        state=TacticalState.COMBAT,
+        screen_summary="Enemy squad spotted at North",
+        danger_level=0.85,
+        entities_in_view=["Player", "Enemy", "M4A1"],
+    )
+    assert updated.game_id == "abi"
+    assert updated.state == TacticalState.COMBAT
+    assert updated.danger_level == 0.85
+    assert updated.is_in_combat() is True
+    assert "Enemy" in updated.entities_in_view
+
+    bb.set_tactical_state(TacticalState.RADIO_SILENCE)
+    current = bb.get_state()
+    assert current.state == TacticalState.RADIO_SILENCE
+    assert current.is_silent() is True
+
+    bb.reset()
+    assert bb.get_state().state == TacticalState.EXPLORING
+
+
+def test_brain_instant_silence_command_response(tmp_path: Path):
+    """Verify Brain.ask intercepts silence commands instantly without calling LLM."""
+    cfg = AppConfig()
+    cfg.gemini.game = "abi"
+    cfg.reports.output_dir = str(tmp_path / "reports")
+    cfg.reports.auto_open_browser = False
+
+    mock_provider = MagicMock()
+    brain = Brain(config=cfg, provider=mock_provider)
+
+    # Issue silence command
+    resp = brain.ask("Silencio de radio")
+    assert "silencio de radio activo" in resp.spoken_text.lower()
+    assert brain.fsm.state.value == "silence"
+    assert brain.blackboard.get_state().state.value == "silence"
+    mock_provider.generate.assert_not_called()
+
+    # Issue resume command
+    resp2 = brain.ask("Reanudar")
+    assert "canal abierto" in resp2.spoken_text.lower()
+    assert brain.fsm.state.value == "exploring"
+    mock_provider.generate.assert_not_called()
+
+
+def test_reports_html_template_constrained_dimensions():
+    """Verify HTML_TEMPLATE in reports.py has max-width and chart constraints."""
+    from abi_coach.application.slices.reporting.reports import HTML_TEMPLATE
+
+    assert "max-width: 960px;" in HTML_TEMPLATE
+    assert "margin: 0 auto;" in HTML_TEMPLATE
+    assert "max-height: 320px;" in HTML_TEMPLATE
+    assert "max-width: 920px;" in HTML_TEMPLATE
+
+
+def test_structured_logger_exception_tracking(tmp_path: Path):
+    """Verify StructuredLogger writes structured JSONL exception records."""
+    import json
+    from abi_coach.infrastructure.adapters.logging.structured_logger import StructuredLogger
+
+    logger = StructuredLogger(logs_dir=tmp_path)
+    log_file = tmp_path / "exceptions.jsonl"
+
+    try:
+        raise KeyError("create_report_report")
+    except KeyError as exc:
+        logger.log_exception(
+            component="test_component",
+            agent="BrainMaster",
+            action="generate_content",
+            exc=exc,
+            prompt="test query",
+        )
+
+    assert log_file.is_file()
+    lines = log_file.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["component"] == "test_component"
+    assert record["agent"] == "BrainMaster"
+    assert record["action"] == "generate_content"
+    assert record["exception"]["type"] == "KeyError"
+    assert "create_report_report" in record["exception"]["message"]
+    assert record["extra"]["prompt"] == "test query"
+
 
 
 

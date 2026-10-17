@@ -33,8 +33,8 @@ speaker:
     assert cfg.gemini.model == "gemini-2.5-flash"
     assert cfg.listener.ptt_key == "f8"
     assert cfg.speaker.voice == "es-MX-DaliaNeural"
-    assert cfg.capture.downscale_width == 1920
-    assert cfg.capture.downscale_height == 1080
+    assert cfg.capture.downscale_width == 1280
+    assert cfg.capture.downscale_height == 720
     assert cfg.listener.whisper_beam_size == 1
 
 

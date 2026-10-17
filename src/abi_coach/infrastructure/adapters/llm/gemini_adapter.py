@@ -66,12 +66,18 @@ class GeminiAdapter(LLMProviderPort):
             max_out_tokens = getattr(
                 self.config, "max_output_tokens", getattr(self.config, "max_tokens", 800)
             )
+            afc_config = (
+                types.AutomaticFunctionCallingConfig(disable=True)
+                if hasattr(types, "AutomaticFunctionCallingConfig")
+                else None
+            )
             gen_config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=self.config.temperature,
                 max_output_tokens=max_out_tokens,
                 media_resolution=self._get_media_resolution(),
                 tools=tools_list if tools_list else None,
+                automatic_function_calling=afc_config,
             )
 
             response = self.client.models.generate_content(
@@ -85,11 +91,19 @@ class GeminiAdapter(LLMProviderPort):
             report_html = None
             if getattr(response, "function_calls", None):
                 for fc in response.function_calls:
+                    func_name = (getattr(fc, "name", "") or "").lower()
                     fc_args = getattr(fc, "args", {}) or {}
-                    report_title = fc_args.get("title", report_title)
-                    report_html = fc_args.get("html_body", report_html)
-                    if tool_callback:
-                        tool_callback(**fc_args)
+                    if any(
+                        alias in func_name
+                        for alias in ("create_report", "report_tool", "create_html_report", "report")
+                    ):
+                        report_title = fc_args.get("title", report_title)
+                        report_html = fc_args.get("html_body", report_html)
+                        if tool_callback:
+                            try:
+                                tool_callback(**fc_args)
+                            except Exception:
+                                pass
 
             spoken_text = (getattr(response, "text", None) or "").strip()
             usage = getattr(response, "usage_metadata", None)

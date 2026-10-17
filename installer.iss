@@ -4,7 +4,7 @@
 ; y accesos directos opcionales (desmarcados por defecto).
 
 #define MyAppName "Companion Advisor"
-#define MyAppVersion "0.2.1"
+#define MyAppVersion "0.2.2"
 #define MyAppPublisher "Reaper"
 #define MyAppURL "https://github.com/reaper1067MSX/llm-voice-advisor"
 #define MyAppExeName "game-advisor.exe"

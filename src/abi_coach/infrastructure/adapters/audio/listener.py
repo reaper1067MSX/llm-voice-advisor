@@ -1,35 +1,24 @@
 """Audio input and speech-to-text listener for ABI Coach (Core Audio).
 
-Supports:
-1. Continuous Voice Activity Detection (VAD): Hands-free operation where the coach
-   continuously listens, detects speech, captures the screen, and answers automatically.
-2. Push-to-Talk (PTT) with GetAsyncKeyState on Windows (hardware polling).
-3. Hybrid Mode: Both VAD and PTT key active simultaneously.
-4. faster-whisper running on NVIDIA CUDA (RTX 4070 Ti) with automatic CPU fallback.
+Powered by:
+1. Silero VAD (Neuronal Voice Activity Detection via ONNX): High-precision speech discrimination
+   that eliminates false activations from mechanical keyboards, mouse clicks, and breathing.
+2. Continuous Hands-Free Listening: Smooth conversational flow with natural silence timeouts.
+3. Local faster-whisper running on NVIDIA CUDA with automatic CPU fallback.
 """
 
 import collections
-import ctypes
 import os
 import queue
 import threading
 import time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 from faster_whisper import WhisperModel
 import numpy as np
 import sounddevice as sd
 
+from abi_coach.infrastructure.adapters.logging.structured_logger import log_event, log_exception
 from abi_coach.infrastructure.config.settings import ListenerConfig
-
-VK_MAP = {
-    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
-    "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
-    "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
-    "scroll_lock": 0x91, "pause": 0x13,
-    "x1": 0x05, "x2": 0x06,
-    "v": 0x56, "t": 0x54, "c": 0x43, "x": 0x58, "z": 0x5A,
-    "caps_lock": 0x14,
-}
 
 
 def play_beep(freq: int, duration_ms: int) -> None:
@@ -50,6 +39,7 @@ def play_beep(freq: int, duration_ms: int) -> None:
 def _setup_cuda_dlls() -> None:
     """Add virtualenv nvidia DLL paths to Windows DLL search directory, PATH, and preload them."""
     if os.name == "nt":
+        import ctypes
         import sys
 
         candidate_dirs = []
@@ -101,15 +91,18 @@ def _setup_cuda_dlls() -> None:
 
 
 class AudioListener:
+    """High-performance audio listener with neural Silero VAD and Whisper STT."""
+
     def __init__(self, config: ListenerConfig):
         self.config = config
         self._running = False
         self._is_paused = False
         self._stream: Optional[sd.InputStream] = None
         self._whisper: Optional[WhisperModel] = None
+        self._vad_model: Optional[Any] = None
         self._audio_queue: queue.Queue = queue.Queue(maxsize=300)
-        # Pre-buffer keeps the last ~0.4s of audio blocks
-        self._pre_buffer = collections.deque(maxlen=6)
+        # Pre-buffer keeps the last ~320ms (10 chunks of 32ms) to never clip initial speech
+        self._pre_buffer = collections.deque(maxlen=10)
 
     def init_whisper(self) -> WhisperModel:
         """Initialize local faster-whisper model on GPU with fallback to CPU."""
@@ -126,7 +119,8 @@ class AudioListener:
                 device=device,
                 compute_type=compute_type,
             )
-        except Exception:
+        except Exception as exc:
+            log_exception("AudioWorker", "init_whisper_gpu", exc)
             # Fallback to CPU if CUDA initialization fails
             self._whisper = WhisperModel(
                 self.config.whisper_model,
@@ -135,6 +129,42 @@ class AudioListener:
             )
 
         return self._whisper
+
+    def init_vad(self) -> Optional[Any]:
+        """Load Silero VAD model via faster-whisper's bundled ONNX runtime session."""
+        if self._vad_model is not None:
+            return self._vad_model
+
+        try:
+            from faster_whisper.vad import get_vad_model
+            self._vad_model = get_vad_model()
+            log_event("AudioWorker", "init_silero_vad", status="loaded")
+        except Exception as exc:
+            log_exception("AudioWorker", "init_silero_vad", exc)
+            self._vad_model = None
+
+        return self._vad_model
+
+    def get_speech_probability(self, chunk: np.ndarray) -> float:
+        """Evaluate voice activity probability using neural Silero VAD with fallback to RMS."""
+        vad = self.init_vad()
+        if vad is not None:
+            try:
+                flat_chunk = chunk.flatten().astype(np.float32)
+                # Silero VAD requires chunks of exactly 512 samples at 16000Hz (32ms)
+                if flat_chunk.shape[0] != 512:
+                    if flat_chunk.shape[0] < 512:
+                        flat_chunk = np.pad(flat_chunk, (0, 512 - flat_chunk.shape[0]))
+                    else:
+                        flat_chunk = flat_chunk[:512]
+                prob = float(vad(flat_chunk)[0])
+                return prob
+            except Exception:
+                pass
+
+        # Robust energy fallback if neural VAD is unavailable
+        rms = float(np.sqrt(np.mean(chunk**2)))
+        return 1.0 if rms >= getattr(self.config, "vad_threshold", 0.02) else 0.0
 
     def transcribe_audio(self, audio_data: np.ndarray) -> Optional[str]:
         """Transcribe audio with GPU acceleration and automatic CPU fallback."""
@@ -150,6 +180,7 @@ class AudioListener:
             transcript = " ".join(seg.text.strip() for seg in segments).strip()
             return transcript if transcript else None
         except Exception as e:
+            log_exception("AudioWorker", "transcribe_gpu_fallback", e)
             print(f"\n⚠️ Aviso en transcripción GPU ({e}). Usando Whisper CPU...", flush=True)
             try:
                 self._whisper = WhisperModel(
@@ -166,13 +197,13 @@ class AudioListener:
                 transcript = " ".join(seg.text.strip() for seg in segments).strip()
                 return transcript if transcript else None
             except Exception as e_cpu:
+                log_exception("AudioWorker", "transcribe_cpu_failed", e_cpu)
                 print(f"❌ Error al transcribir en CPU: {e_cpu}", flush=True)
                 return None
 
     def _audio_callback(self, indata, frames, time_info, status):
-        """Warm stream callback: computes RMS and queues audio blocks."""
-        chunk = indata.copy()
-        # Compute root-mean-square energy of the incoming audio block
+        """Warm stream callback: queues audio blocks for real-time VAD processing."""
+        chunk = indata.copy().flatten()
         rms = float(np.sqrt(np.mean(chunk**2)))
         try:
             self._audio_queue.put_nowait((chunk, rms))
@@ -180,18 +211,19 @@ class AudioListener:
             pass
 
     def start_stream(self) -> None:
-        """Open and keep active a persistent warm InputStream."""
+        """Open and keep active a persistent warm InputStream with native 512-sample blocks."""
         if self._stream is None:
             try:
                 self._stream = sd.InputStream(
                     samplerate=self.config.sample_rate,
                     channels=1,
-                    blocksize=1024,
+                    blocksize=512,  # 512 samples = 32ms at 16000Hz (native Silero VAD frame size)
                     dtype="float32",
                     callback=self._audio_callback,
                 )
                 self._stream.start()
             except Exception as e:
+                log_exception("AudioWorker", "start_stream", e)
                 print(f"⚠️ Aviso al iniciar InputStream de micrófono: {e}")
 
     def record_seconds(self, duration_sec: float = 3.0) -> Optional[str]:
@@ -273,7 +305,7 @@ class AudioListener:
             self._stream = None
 
     def stop_ptt_loop(self) -> None:
-        """Signal the polling loop to terminate."""
+        """Signal the listening loop to terminate."""
         self._running = False
 
     def listen_ptt_loop(
@@ -281,77 +313,23 @@ class AudioListener:
         on_press_callback: Callable[[], None],
         on_release_callback: Callable[[str], None],
     ) -> None:
-        """Main listening loop supporting Continuous VAD, PTT key, or Hybrid mode."""
+        """Main hands-free listening loop powered by Silero VAD.
+        
+        Filters out breathing, keyboard typing, and ambient noise.
+        Retains method signature for backward compatibility with application loop.
+        """
         self._running = True
         self.start_stream()
-
-        mode = self.config.mode.lower()
-        enable_vad = mode in ("continuous", "hybrid")
-        enable_ptt = mode in ("ptt", "hybrid", "continuous")  # Keep PTT available as alternative
-
-        # Setup Windows hardware key polling
-        user32 = None
-        target_vk = 0x78  # F9 default
-        mouse_vk = 0x06
-        check_mouse = self.config.mouse_button_enabled
-
-        if os.name == "nt":
-            user32 = ctypes.windll.user32
-            target_key_name = self.config.ptt_key.lower()
-            target_vk = VK_MAP.get(target_key_name, 0x78)
-            mouse_vk = VK_MAP.get(self.config.mouse_button.lower(), 0x06)
+        self.init_vad()
 
         is_recording = False
-        recording_type = None  # "vad" or "ptt"
         recorded_chunks = []
         speech_start_time = 0.0
         last_voice_time = 0.0
-        was_ptt_down = False
+        consecutive_speech_blocks = 0
+        silence_timeout = getattr(self.config, "silence_duration_sec", 1.6)
 
         while self._running:
-            # 1. Check physical hardware PTT key state (if on Windows)
-            if enable_ptt and user32 is not None:
-                is_key_down = bool(user32.GetAsyncKeyState(target_vk) & 0x8000)
-                is_mouse_down = bool(check_mouse and (user32.GetAsyncKeyState(mouse_vk) & 0x8000))
-                is_ptt_down = is_key_down or is_mouse_down
-
-                if is_ptt_down and not was_ptt_down and not self._is_paused:
-                    was_ptt_down = True
-                    is_recording = True
-                    recording_type = "ptt"
-                    speech_start_time = time.perf_counter()
-                    now_str = time.strftime("%H:%M:%S")
-                    print(f"\n[{now_str}] 🎙️ [{self.config.ptt_key.upper()} PRESIONADO] Grabando y capturando pantalla...", flush=True)
-                    play_beep(1200, 50)
-                    recorded_chunks = list(self._pre_buffer)
-                    try:
-                        on_press_callback()
-                    except Exception:
-                        pass
-
-                elif not is_ptt_down and was_ptt_down:
-                    was_ptt_down = False
-                    if recording_type == "ptt":
-                        is_recording = False
-                        recording_type = None
-                        press_duration = time.perf_counter() - speech_start_time
-                        now_str = time.strftime("%H:%M:%S")
-                        play_beep(800, 50)
-
-                        if press_duration < self.config.min_duration_sec or not recorded_chunks:
-                            play_beep(400, 100)
-                            print(f"[{now_str}] ⚠️ Pulsación rápida ({press_duration:.2f}s). Mantén presionado mientras hablas.", flush=True)
-                        else:
-                            print(f"[{now_str}] 🛑 [TECLA SOLTADA] ({press_duration:.2f}s). Transcribiendo en GPU...", flush=True)
-                            audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
-                            recorded_chunks = []
-                            transcript = self.transcribe_audio(audio_data)
-                            if transcript:
-                                on_release_callback(transcript)
-                            else:
-                                print(f"[{now_str}] ⚠️ No se detectó voz clara.", flush=True)
-
-            # 2. Process audio blocks from the microphone queue
             try:
                 chunk, rms = self._audio_queue.get(timeout=0.02)
             except queue.Empty:
@@ -360,15 +338,16 @@ class AudioListener:
             if self._is_paused:
                 continue
 
-            # Continuous Voice Activity Detection (VAD)
-            if enable_vad and recording_type != "ptt":
-                is_speech = rms >= self.config.vad_threshold
+            prob = self.get_speech_probability(chunk)
+            is_speech = prob >= 0.50
 
-                if not is_recording:
-                    if is_speech:
-                        # Voice detected!
+            if not is_recording:
+                if is_speech:
+                    consecutive_speech_blocks += 1
+                    # Require 2 consecutive frames (~64ms) or high confidence (>0.75) to start recording
+                    if consecutive_speech_blocks >= 2 or prob >= 0.75:
                         is_recording = True
-                        recording_type = "vad"
+                        consecutive_speech_blocks = 0
                         speech_start_time = time.perf_counter()
                         last_voice_time = time.perf_counter()
                         now_str = time.strftime("%H:%M:%S")
@@ -380,43 +359,48 @@ class AudioListener:
                             on_press_callback()
                         except Exception:
                             pass
-                    else:
-                        self._pre_buffer.append(chunk)
+                else:
+                    consecutive_speech_blocks = 0
+                    self._pre_buffer.append(chunk)
 
-                elif is_recording and recording_type == "vad":
-                    recorded_chunks.append(chunk)
-                    if is_speech:
-                        last_voice_time = time.perf_counter()
-
-                    # Check if silence timeout reached
-                    silence_duration = time.perf_counter() - last_voice_time
-                    if silence_duration >= self.config.silence_duration_sec:
-                        is_recording = False
-                        recording_type = None
-                        speech_duration = last_voice_time - speech_start_time
-                        now_str = time.strftime("%H:%M:%S")
-                        play_beep(800, 40)
-
-                        if speech_duration < self.config.min_duration_sec or not recorded_chunks:
-                            recorded_chunks = []
-                            continue
-
-                        print(f"[{now_str}] 🛑 [FIN DE VOZ] ({speech_duration:.1f}s). Transcribiendo con Whisper GPU...", flush=True)
-                        audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
-                        recorded_chunks = []
-
-                        transcript = self.transcribe_audio(audio_data)
-
-                        if transcript:
-                            # Optional wake word filter
-                            if self.config.wake_word:
-                                if self.config.wake_word.lower() not in transcript.lower():
-                                    print(f"[{now_str}] ℹ️ Ignorado (no contiene palabra clave '{self.config.wake_word}'): \"{transcript}\"", flush=True)
-                                    continue
-                            on_release_callback(transcript)
-                        else:
-                            print(f"[{now_str}] ⚠️ No se reconoció texto claro en la grabación.", flush=True)
-                            print(f"[{now_str}] 🎧 Esperando tu pregunta (habla naturalmente en tu micro)...\n", flush=True)
-
-            elif is_recording and recording_type == "ptt":
+            elif is_recording:
                 recorded_chunks.append(chunk)
+                # Lower threshold (0.35) during active speech preserves quiet syllables and word endings
+                if prob >= 0.35:
+                    last_voice_time = time.perf_counter()
+
+                silence_duration = time.perf_counter() - last_voice_time
+                if silence_duration >= silence_timeout:
+                    is_recording = False
+                    speech_duration = last_voice_time - speech_start_time
+                    now_str = time.strftime("%H:%M:%S")
+                    play_beep(800, 40)
+
+                    if speech_duration < self.config.min_duration_sec or not recorded_chunks:
+                        recorded_chunks = []
+                        continue
+
+                    print(f"[{now_str}] 🛑 [FIN DE VOZ] ({speech_duration:.1f}s). Transcribiendo con Whisper GPU...", flush=True)
+                    audio_data = np.concatenate(recorded_chunks, axis=0).flatten()
+                    recorded_chunks = []
+
+                    t_start = time.perf_counter()
+                    transcript = self.transcribe_audio(audio_data)
+                    t_lat = (time.perf_counter() - t_start) * 1000
+
+                    if transcript:
+                        log_event(
+                            component="AudioWorker",
+                            action="transcribe_speech",
+                            latency_ms=t_lat,
+                            user_prompt=transcript,
+                        )
+                        # Optional wake word filter
+                        if self.config.wake_word:
+                            if self.config.wake_word.lower() not in transcript.lower():
+                                print(f"[{now_str}] ℹ️ Ignorado (no contiene palabra clave '{self.config.wake_word}'): \"{transcript}\"", flush=True)
+                                continue
+                        on_release_callback(transcript)
+                    else:
+                        print(f"[{now_str}] ⚠️ No se reconoció texto claro en la grabación.", flush=True)
+                        print(f"[{now_str}] 🎧 Esperando tu pregunta (habla naturalmente en tu micro)...\n", flush=True)

@@ -61,11 +61,18 @@ class GeminiProvider:
         if tool_callback:
             tools_list.append(tool_callback)
 
+        afc_config = (
+            types.AutomaticFunctionCallingConfig(disable=True)
+            if hasattr(types, "AutomaticFunctionCallingConfig")
+            else None
+        )
+
         cfg = types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=self.config.temperature,
             media_resolution=media_res,
             tools=tools_list if tools_list else None,
+            automatic_function_calling=afc_config,
         )
 
         response = self.client.models.generate_content(
@@ -78,12 +85,20 @@ class GeminiProvider:
 
         report_path = None
         spoken_text = ""
-        if response.function_calls:
+        if getattr(response, "function_calls", None):
             for fc in response.function_calls:
-                if fc.name == "create_report_tool" and tool_callback:
-                    report_path = tool_callback(**fc.args)
+                func_name = (getattr(fc, "name", "") or "").lower()
+                fc_args = getattr(fc, "args", {}) or {}
+                if tool_callback and any(
+                    alias in func_name
+                    for alias in ("create_report", "report_tool", "create_html_report", "report")
+                ):
+                    try:
+                        report_path = tool_callback(**fc_args)
+                    except Exception:
+                        pass
 
-        if response.text:
+        if getattr(response, "text", None):
             spoken_text = response.text.strip()
 
         input_tok = None

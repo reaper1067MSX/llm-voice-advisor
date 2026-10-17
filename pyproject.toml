@@ -1,6 +1,6 @@
 [project]
 name = "llm-voice-advisor"
-version = "0.2.1"
+version = "0.2.2"
 description = "Real-time Multimodal AI Gaming Voice Advisor & Tactical Co-pilot with VAD, local GPU Whisper STT, Natural TTS, Smart Visual Inference, and dynamic secondary-monitor dashboards."
 authors = [
     { name = "Santiago Arguello", email = "geovanny1067@hotmail.com" }
