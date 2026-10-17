@@ -1,0 +1,63 @@
+"""Report presenter service for HTML dashboard template generation and rendering."""
+
+from __future__ import annotations
+
+from typing import Any, Callable, Optional
+
+from abi_coach.application.slices.reporting.reports import create_html_report
+
+
+class ReportPresenterService:
+    """Responsible for building and rendering HTML dashboards and reports."""
+
+    def __init__(
+        self,
+        output_dir: Optional[str] = None,
+        auto_open: bool = True,
+        opener: Optional[Callable[[str], Any]] = None,
+        preferred_browser: Optional[str] = None,
+        focus_browser: bool = False,
+    ) -> None:
+        self.output_dir = output_dir
+        self.auto_open = auto_open
+        self.opener = opener
+        self.preferred_browser = preferred_browser
+        self.focus_browser = focus_browser
+
+    def render_report(self, title: str, html_body: str) -> str:
+        """Render an HTML report to disk and optionally launch in browser."""
+        path = create_html_report(
+            title=title,
+            html_body=html_body,
+            output_dir=self.output_dir,
+            auto_open=self.auto_open,
+            opener=self.opener,
+            preferred_browser=self.preferred_browser,
+            focus_browser=self.focus_browser,
+        )
+        return str(path)
+
+    def render_context_dashboard(
+        self,
+        context_id: str,
+        display_name: str,
+        archetype_title: str,
+    ) -> Optional[str]:
+        """Compose and render a gaming context activation dashboard."""
+        html_body = f"""
+        <div class="card">
+            <h2>🎮 Contexto Activo: {display_name}</h2>
+            <div class="badge-row" style="margin-top: 10px; margin-bottom: 15px;">
+                <span class="badge badge-purple">Arquetipo: {archetype_title}</span>
+                <span class="badge badge-blue">Contexto: {context_id}</span>
+                <span class="badge badge-green">Estado: Conectado</span>
+            </div>
+            <p style="color: #9ca3af; line-height: 1.6;">
+                El motor ha sincronizado las reglas tácticas de <strong>{display_name}</strong>, activado la memoria dinámica de arquetipo y purgado la caché L1 en RAM.
+            </p>
+        </div>
+        """
+        try:
+            return self.render_report(f"Dashboard: {display_name}", html_body)
+        except Exception:
+            return None

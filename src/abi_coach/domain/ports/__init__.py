@@ -7,6 +7,10 @@ from abi_coach.domain.ports.llm_port import LLMProviderPort, LLMResponseDTO
 from abi_coach.domain.ports.memory_port import MemoryRepositoryPort
 from abi_coach.domain.ports.vision_port import ReportDisplayPort, ScreenCapturePort, ScreenCaptureResultDTO
 
+from abi_coach.domain.ports.context_port import AdvisorContextPort
+from abi_coach.domain.ports.game_context_port import GameContextPort
+from abi_coach.domain.ports.history_port import ConversationHistoryPort
+
 __all__ = [
     "LLMProviderPort",
     "LLMResponseDTO",
@@ -18,4 +22,8 @@ __all__ = [
     "ScreenCaptureResultDTO",
     "ReportDisplayPort",
     "BlackboardPort",
+    "ConversationHistoryPort",
+    "AdvisorContextPort",
+    "GameContextPort",
 ]
+

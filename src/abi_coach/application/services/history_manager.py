@@ -1,4 +1,4 @@
-"""Thread-safe conversation history manager with rolling window pruning."""
+"""Thread-safe conversation history manager implementing ConversationHistoryPort."""
 
 from __future__ import annotations
 
@@ -6,17 +6,19 @@ from dataclasses import dataclass
 import threading
 from typing import Iterator, List
 
+from abi_coach.domain.ports.history_port import ConversationHistoryPort
 
-@dataclass
+
+@dataclass(frozen=True)
 class Turn:
-    """Single turn in a conversation."""
+    """Immutable single turn in a conversation."""
 
     role: str
     text: str
 
 
-class ConversationHistoryManager:
-    """Manages rolling conversation history window in a thread-safe manner."""
+class ConversationHistoryManager(ConversationHistoryPort):
+    """Thread-safe rolling conversation history manager implementing ConversationHistoryPort."""
 
     def __init__(self, max_turns: int = 50) -> None:
         self._max_turns = max_turns
@@ -28,19 +30,19 @@ class ConversationHistoryManager:
         with self._lock:
             return list(self._turns)
 
-    def append(self, turn: Turn) -> None:
-        """Add turn and prune to rolling window."""
+    def record_turn(self, role: str, text: str) -> None:
+        """Record a single turn and prune to rolling window."""
         with self._lock:
-            self._turns.append(turn)
+            self._turns.append(Turn(role=role, text=text))
             if len(self._turns) > self._max_turns:
                 self._turns = self._turns[-self._max_turns:]
 
     def add_turn(self, role: str, text: str) -> None:
-        """Convenience method to append a turn."""
-        self.append(Turn(role=role, text=text))
+        """Convenience alias for record_turn."""
+        self.record_turn(role, text)
 
     def add_user_coach(self, user_prompt: str, coach_response: str) -> None:
-        """Add a paired user query and coach response turn."""
+        """Record an atomic paired user query and coach response."""
         with self._lock:
             self._turns.append(Turn(role="user", text=user_prompt))
             self._turns.append(Turn(role="coach", text=coach_response))
