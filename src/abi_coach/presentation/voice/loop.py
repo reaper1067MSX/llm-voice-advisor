@@ -38,6 +38,8 @@ def should_inspect_screen(prompt: str) -> bool:
     visual_triggers = [
         "mira", "mirá", "mire", "miren", "observa", "fijate", "fíjate", "revisa", "analiza mi pantalla",
         "en pantalla", "mi pantalla", "la pantalla", "ves", "veo", "viendo",
+        "ver esto", "ver esta", "ver mi", "tienes que ver", "tienes que mirar", "hay que ver",
+        "checa", "chequea", "fíjate en esto", "fijate en esto",
     ]
     if any(trigger in p for trigger in visual_triggers):
         return True
@@ -69,6 +71,9 @@ def run_interactive_loop(config) -> None:
     if game_lower in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
         title_str = "🎯 ABI TACTICAL COACH - Arena Breakout: Infinite"
         game_display = "Arena Breakout: Infinite (S7 Balística & Alijo)"
+    elif game_lower in ("once_human", "oncehuman", "once-human", "once human"):
+        title_str = "🎮 ONCE HUMAN COMPANION - Tactical Survival & Build Optimizer"
+        game_display = "Once Human (Metahumano / Mayfly - Builds & Silos)"
     else:
         title_str = "🎮 GAME ADVISOR - AI Gaming Voice Co-pilot & Configurator"
         game_display = "Universal / Multijuego (Modo Advisor Onboarding)"
@@ -160,6 +165,8 @@ def run_interactive_loop(config) -> None:
     print("👉 Habla naturalmente en tu micrófono. El modelo neural filtra teclados y respiración.")
     print("   • Al detectar tu voz: bip agudo + grabación inteligente.")
     print("   • Al terminar de hablar: bip grave + transcripción GPU + respuesta instantánea.")
+    mute_key_str = getattr(config.listener, "mute_key", "f10").upper()
+    print(f"   • Silenciar micro (Mute): Presiona {mute_key_str} o di 'mutéate' para silenciar mientras hablas en Discord.")
     print("   • Control de foco táctico: Di 'Silencio de radio' o 'Modo concentración' para callar sugerencias.")
     print("   • Reanudar comunicación: Di 'Reanuda' o 'Companion activo'.")
     print("   • Salir: Presiona Ctrl+C o cierra la ventana.")
@@ -170,6 +177,8 @@ def run_interactive_loop(config) -> None:
     # Vocal greeting to confirm sound output and indicate readiness
     if game_lower in ("abi", "arena_breakout", "arena_breakout_infinite", "arena-breakout"):
         greeting = "Hola, soy tu coach táctico de Arena Breakout. Estoy listo y atento a tu partida. Hazme cualquier pregunta."
+    elif game_lower in ("once_human", "oncehuman", "once-human", "once human"):
+        greeting = "Hola, metahumano. Soy tu companion de Once Human. Listo para optimizar tus builds, silos y supervivencia en Nalcott."
     else:
         greeting = "Hola, soy tu Game Advisor. Estoy listo para cualquier juego. Di 'Vamos a jugar' y el nombre del juego para configurarlo en caliente."
     print("🔊 Saludando por voz en tus auriculares...", flush=True)
@@ -208,6 +217,22 @@ def run_interactive_loop(config) -> None:
         now_str = time.strftime("%H:%M:%S")
         print(f"[{now_str}] 🗣️ Tú preguntaste: \"{transcript}\"", flush=True)
 
+        # Intercepción de comandos por voz para silenciar el micrófono
+        lower_prompt = transcript.lower().strip()
+        mute_phrases = (
+            "mutéate", "muteate", "silencio", "ponte en silencio",
+            "silénciate", "silenciate", "modo silencio", "mute", "cállate", "callate"
+        )
+        if any(p in lower_prompt for p in mute_phrases) and len(lower_prompt.split()) <= 4:
+            print(f"[{now_str}] 🔇 Comando de voz de silencio detectado.", flush=True)
+            mute_key = getattr(config.listener, "mute_key", "f10").upper()
+            listener.pause_listening()
+            try:
+                speaker.speak(f"Micrófono en silencio. Presiona {mute_key} para reactivarme.")
+            finally:
+                listener.mute()
+            return
+
         with capture_lock:
             fut = capture_future
             capture_future = None
@@ -221,6 +246,13 @@ def run_interactive_loop(config) -> None:
 
         # Smart visual inference
         needs_screen = should_inspect_screen(transcript)
+        if needs_screen and cap is None:
+            try:
+                cap = capture_screen(config.capture)
+            except Exception as e:
+                print(f"[{now_str}] ⚠️ Error en captura de pantalla: {e}", flush=True)
+                cap = None
+
         if needs_screen and cap:
             print(f"[{now_str}] 👁️ Consulta visual detectada (\"mira\" / deíctica). Analizando captura 1440p...", flush=True)
             img_bytes = cap.full_image_bytes
@@ -229,6 +261,8 @@ def run_interactive_loop(config) -> None:
             print(f"[{now_str}] 💡 Consulta estratégica/conceptual (respuesta directa ultra-rápida)...", flush=True)
             img_bytes = None
             crp_bytes = None
+
+        print(f"[{now_str}] ⏳ [PROCESANDO] Consultando modelo táctico...", flush=True)
 
         res = brain.ask_result(
             prompt=transcript,
@@ -249,7 +283,8 @@ def run_interactive_loop(config) -> None:
 
         resp = res.unwrap()
         now_resp = time.strftime("%H:%M:%S")
-        print(f"\n[{now_resp}] 🎯 Coach ({resp.latency_ms:.0f} ms):", flush=True)
+        provider_info = f" | {getattr(resp, 'provider_name', 'gemini')}" if getattr(resp, "provider_name", None) else ""
+        print(f"\n[{now_resp}] 🎯 Coach ({resp.latency_ms:.0f} ms{provider_info}):", flush=True)
         print(f"   \"{resp.spoken_text}\"\n", flush=True)
         if resp.report_path:
             print(f"📊 Tabla/Gráfico interactiva abierta en pantalla secundaria: {resp.report_path}", flush=True)

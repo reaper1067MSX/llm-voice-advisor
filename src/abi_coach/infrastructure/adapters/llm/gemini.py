@@ -14,7 +14,15 @@ class GeminiProvider:
 
     def __init__(self, config: GeminiConfig, api_key: str):
         self.config = config
-        self.client = genai.Client(api_key=api_key)
+        timeout_ms = getattr(config, "timeout_ms", 4500)
+        http_opts = types.HttpOptions(
+            timeout=timeout_ms,
+            retry_options=types.HttpRetryOptions(attempts=1),
+        )
+        try:
+            self.client = genai.Client(api_key=api_key, http_options=http_opts)
+        except TypeError:
+            self.client = genai.Client(api_key=api_key)
 
     def _get_media_resolution(self) -> types.MediaResolution:
         res = (self.config.media_resolution or "high").lower()
@@ -67,9 +75,20 @@ class GeminiProvider:
             else None
         )
 
+        max_tokens = getattr(self.config, "max_output_tokens", getattr(self.config, "max_tokens", 250))
+        thinking_budget = getattr(self.config, "thinking_budget", 0)
+        thinking_cfg = None
+        if hasattr(types, "ThinkingConfig") and thinking_budget is not None:
+            try:
+                thinking_cfg = types.ThinkingConfig(thinking_budget=thinking_budget)
+            except Exception:
+                thinking_cfg = None
+
         cfg = types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=self.config.temperature,
+            max_output_tokens=max_tokens,
+            thinking_config=thinking_cfg,
             media_resolution=media_res,
             tools=tools_list if tools_list else None,
             automatic_function_calling=afc_config,

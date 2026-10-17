@@ -16,6 +16,7 @@ class LLMResponseDTO:
     report_html: Optional[str] = None
     tokens: TokenUsage = TokenUsage()
     latency_ms: float = 0.0
+    provider_name: str = "gemini"
 
 
 class LLMProviderPort(Protocol):

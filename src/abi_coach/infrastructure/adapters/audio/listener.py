@@ -97,6 +97,7 @@ class AudioListener:
         self.config = config
         self._running = False
         self._is_paused = False
+        self._is_muted = False
         self._stream: Optional[sd.InputStream] = None
         self._whisper: Optional[WhisperModel] = None
         self._vad_model: Optional[Any] = None
@@ -304,6 +305,67 @@ class AudioListener:
                 pass
             self._stream = None
 
+    def is_muted(self) -> bool:
+        """Return whether microphone listening is currently muted."""
+        return self._is_muted
+
+    def toggle_mute(self) -> bool:
+        """Toggle microphone mute state with distinct acoustic feedback."""
+        self._is_muted = not self._is_muted
+        if self._is_muted:
+            play_beep(500, 70)  # Tono grave de silenciado
+            key_name = getattr(self.config, "mute_key", "f10").upper()
+            print(f"\n🔇 [MICRÓFONO EN SILENCIO] Escucha desactivada (Presiona {key_name} para reactivar)", flush=True)
+        else:
+            play_beep(1200, 40)
+            time.sleep(0.04)
+            play_beep(1500, 40)  # Tono agudo doble de reactivación
+            print("\n🎙️ [MICRÓFONO ACTIVO] Escuchando nuevamente...", flush=True)
+        return self._is_muted
+
+    def mute(self) -> None:
+        """Explicitly mute microphone listening."""
+        if not self._is_muted:
+            self.toggle_mute()
+
+    def unmute(self) -> None:
+        """Explicitly unmute microphone listening."""
+        if self._is_muted:
+            self.toggle_mute()
+
+    def _start_hotkey_listener(self) -> None:
+        """Start a background daemon thread monitoring the global mute hotkey on Windows."""
+        if os.name != "nt":
+            return
+
+        import ctypes
+        user32 = ctypes.windll.user32
+
+        vk_map = {
+            "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
+            "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
+            "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+        }
+        mute_key = getattr(self.config, "mute_key", "f10").lower().strip()
+        vk_code = vk_map.get(mute_key, 0x79)
+
+        def _worker():
+            was_down = False
+            while self._running:
+                try:
+                    is_down = (user32.GetAsyncKeyState(vk_code) & 0x8000) != 0
+                    if is_down and not was_down:
+                        was_down = True
+                        self.toggle_mute()
+                    elif not is_down and was_down:
+                        was_down = False
+                except Exception:
+                    pass
+                time.sleep(0.04)
+
+        t = threading.Thread(target=_worker, name="mute_hotkey_listener", daemon=True)
+        t.start()
+
     def stop_ptt_loop(self) -> None:
         """Signal the listening loop to terminate."""
         self._running = False
@@ -321,6 +383,7 @@ class AudioListener:
         self._running = True
         self.start_stream()
         self.init_vad()
+        self._start_hotkey_listener()
 
         is_recording = False
         recorded_chunks = []
@@ -335,7 +398,7 @@ class AudioListener:
             except queue.Empty:
                 continue
 
-            if self._is_paused:
+            if self._is_paused or self._is_muted:
                 continue
 
             prob = self.get_speech_probability(chunk)

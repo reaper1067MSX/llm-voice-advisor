@@ -30,9 +30,48 @@ class ProcessedCapture:
 
 
 def _grab_raw_image(monitor_index: int) -> Image.Image:
-    """Runs inside a dedicated worker thread to grab screen contents via MSS or ImageGrab."""
+    """Runs inside a dedicated worker thread to grab screen contents.
+    
+    Order of preference:
+    1. Windows Graphics Capture (WGC / Direct3D11): Modern Windows 10/11 GPU pipeline.
+       Works seamlessly even when Discord/OBS are streaming, supports hardware acceleration,
+       exclusive fullscreen and borderless games without BitBlt conflicts.
+    2. MSS: Fast GDI capture for standard desktop without active screen capture hooks.
+    3. ImageGrab: Standard Win32 GDI fallback.
+    """
+    # 1. Try Windows Graphics Capture (WGC) first (immune to Discord/OBS streaming lockouts)
+    try:
+        from windows_capture import WindowsCapture, Frame, InternalCaptureControl
+        target_idx = max(1, monitor_index) if monitor_index else 1
+        wgc_img: Optional[Image.Image] = None
 
-    # Try MSS first
+        capture = WindowsCapture(cursor_capture=False, draw_border=False, monitor_index=target_idx)
+
+        @capture.event
+        def on_frame_arrived(frame: Frame, control: InternalCaptureControl):
+            nonlocal wgc_img
+            wgc_img = Image.frombuffer(
+                "RGBA",
+                (frame.width, frame.height),
+                frame.frame_buffer,
+                "raw",
+                "BGRA",
+                0,
+                1,
+            ).convert("RGB")
+            control.stop()
+
+        @capture.event
+        def on_closed():
+            pass
+
+        capture.start()
+        if wgc_img is not None:
+            return wgc_img
+    except Exception:
+        pass
+
+    # 2. Try MSS
     try:
         with mss.MSS() as sct:
             monitors = sct.monitors
@@ -45,7 +84,7 @@ def _grab_raw_image(monitor_index: int) -> Image.Image:
     except Exception:
         pass
 
-    # Fallback to ImageGrab
+    # 3. Fallback to ImageGrab
     try:
         return ImageGrab.grab(all_screens=False)
     except Exception as e:

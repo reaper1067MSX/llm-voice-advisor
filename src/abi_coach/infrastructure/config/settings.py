@@ -3,16 +3,18 @@
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 import yaml
 
 
 @dataclass
 class GeminiConfig:
-    model: str = "gemini-3.1-flash-lite-preview"
+    model: str = "gemini-3.5-flash"
     media_resolution: str = "medium"
     temperature: float = 0.3
+    max_output_tokens: int = 250
+    thinking_budget: Optional[int] = 0
     api_key: Optional[str] = None
     game: str = "generic"
     system_instruction: Optional[str] = None
@@ -29,8 +31,27 @@ class NvidiaConfig:
 
 
 @dataclass
+class MoonshotConfig:
+    model: str = "moonshot-v1-8k"
+    base_url: str = "https://api.moonshot.cn/v1"
+    temperature: float = 0.3
+    max_tokens: int = 250
+    api_key: Optional[str] = None
+    api_key_env: str = "MOONSHOT_API_KEY"
+    timeout_sec: float = 6.0
+
+
+@dataclass
+class ResilienceConfig:
+    enabled: bool = True
+    failure_threshold: int = 2
+    recovery_timeout_sec: float = 30.0
+    fallback_cascade: List[str] = field(default_factory=lambda: ["gemini-lite", "moonshot"])
+
+
+@dataclass
 class LLMConfig:
-    provider: str = "gemini"  # "gemini" or "nvidia"
+    provider: str = "gemini"  # "gemini", "nvidia", or "resilient"
 
 
 @dataclass
@@ -56,6 +77,7 @@ class CaptureConfig:
 class ListenerConfig:
     mode: str = "continuous"  # "continuous" (manos libres VAD), "ptt", or "hybrid"
     ptt_key: str = "f9"
+    mute_key: str = "f10"
     mouse_button_enabled: bool = False
     mouse_button: str = "x2"
     sample_rate: int = 16000
@@ -96,6 +118,8 @@ class HistoryConfig:
 class AppConfig:
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
     nvidia: NvidiaConfig = field(default_factory=NvidiaConfig)
+    moonshot: MoonshotConfig = field(default_factory=MoonshotConfig)
+    resilience: ResilienceConfig = field(default_factory=ResilienceConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     capture: CaptureConfig = field(default_factory=CaptureConfig)
     listener: ListenerConfig = field(default_factory=ListenerConfig)
@@ -143,6 +167,8 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
                         os.environ["GEMINI_API_KEY"] = str(k_data["gemini_api_key"]).strip()
                     if "nvidia_api_key" in k_data and not os.getenv("NVIDIA_API_KEY"):
                         os.environ["NVIDIA_API_KEY"] = str(k_data["nvidia_api_key"]).strip()
+                    if "moonshot_api_key" in k_data and not os.getenv("MOONSHOT_API_KEY"):
+                        os.environ["MOONSHOT_API_KEY"] = str(k_data["moonshot_api_key"]).strip()
             except Exception:
                 pass
 
@@ -194,6 +220,7 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     lis_cfg = ListenerConfig(
         mode=str(lis_raw.get("mode", "continuous")).lower(),
         ptt_key=str(lis_raw.get("ptt_key", "f9")).lower(),
+        mute_key=str(lis_raw.get("mute_key", "f10")).lower(),
         mouse_button_enabled=bool(lis_raw.get("mouse_button_enabled", False)),
         mouse_button=str(lis_raw.get("mouse_button", "x2")).lower(),
         sample_rate=int(lis_raw.get("sample_rate", 16000)),
@@ -246,9 +273,31 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         api_key_env=nvd_key_env,
     )
 
+    msh_raw = raw.get("moonshot", {})
+    msh_key_env = str(msh_raw.get("api_key_env", "MOONSHOT_API_KEY"))
+    msh_cfg = MoonshotConfig(
+        model=str(msh_raw.get("model", "moonshot-v1-8k")),
+        base_url=str(msh_raw.get("base_url", "https://api.moonshot.cn/v1")),
+        temperature=float(msh_raw.get("temperature", 0.3)),
+        max_tokens=int(msh_raw.get("max_tokens", 250)),
+        api_key=msh_raw.get("api_key") or os.getenv(msh_key_env),
+        api_key_env=msh_key_env,
+        timeout_sec=float(msh_raw.get("timeout_sec", 6.0)),
+    )
+
+    res_raw = raw.get("resilience", {})
+    res_cfg = ResilienceConfig(
+        enabled=bool(res_raw.get("enabled", True)),
+        failure_threshold=int(res_raw.get("failure_threshold", 2)),
+        recovery_timeout_sec=float(res_raw.get("recovery_timeout_sec", 30.0)),
+        fallback_cascade=list(res_raw.get("fallback_cascade", ["gemini-lite", "moonshot"])),
+    )
+
     return AppConfig(
         gemini=gemini_cfg,
         nvidia=nvd_cfg,
+        moonshot=msh_cfg,
+        resilience=res_cfg,
         llm=llm_cfg,
         capture=cap_cfg,
         listener=lis_cfg,
