@@ -66,7 +66,7 @@ class GameContextSwitchUseCase:
             self.rag.default_game = cid
             if getattr(self.rag, "cache", None):
                 self.rag.cache.clear()
-        if self.history_mgr:
+        if self.history_mgr is not None:
             self.history_mgr.add_turn("system", f"Contexto cambiado a {ctx.display_name} ({ctx.archetype_id}).")
         if self.report_coordinator:
             arch = self.archetype_mgr.get_archetype(ctx.archetype_id)
@@ -83,7 +83,7 @@ class GameContextSwitchUseCase:
         arch = self.archetype_mgr.get_archetype(ctx.archetype_id)
         arch_title = arch.display_name if arch else ctx.archetype_id
         spoken = f"Cambié el contexto a {ctx.display_name}. He activado el arquetipo de {arch_title} y sincronizado la memoria táctica. Te abrí el nuevo panel en tu pantalla secundaria."
-        if self.history_mgr:
+        if self.history_mgr is not None:
             self.history_mgr.add_user_coach(prompt, spoken)
         last_rep = self.report_coordinator.last_report_path if self.report_coordinator else None
         return CoachResponse(spoken_text=spoken, report_path=last_rep, input_tokens=0, output_tokens=0, latency_ms=0.0)

@@ -122,7 +122,7 @@ class FastPathQueryUseCase:
         else:
             spoken = item.get("summary", "")
 
-        if self.history_mgr:
+        if self.history_mgr is not None:
             self.history_mgr.add_user_coach(prompt, spoken)
 
         return CoachResponse(

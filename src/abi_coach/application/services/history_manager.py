@@ -72,3 +72,6 @@ class ConversationHistoryManager:
     def __getitem__(self, index: int) -> Turn:
         with self._lock:
             return self._turns[index]
+
+    def __bool__(self) -> bool:
+        return True

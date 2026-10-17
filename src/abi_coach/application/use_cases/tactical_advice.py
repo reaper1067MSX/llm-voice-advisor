@@ -54,6 +54,7 @@ class TacticalAdviceUseCase:
         image_bytes: Optional[bytes] = None,
         crop_bytes: Optional[Dict[str, bytes]] = None,
         active_context_id: str = "generic",
+        provider: Optional[Any] = None,
     ) -> CoachResponse:
         """Execute multimodal tactical reasoning through context pipelines."""
         start_time = time.perf_counter()
@@ -128,7 +129,8 @@ class TacticalAdviceUseCase:
         )
 
         tool_cb = self.report_coordinator.create_tool_callback()
-        raw_res = self.provider.generate(
+        prov = provider or self.provider
+        raw_res = prov.generate(
             prompt=prompt,
             system_instruction=sys_inst,
             image_bytes=image_bytes,
