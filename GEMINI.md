@@ -85,4 +85,26 @@ Antes de proponer una nueva dependencia o arquitectura:
 ### 4. Validación Empírica Mediante Spike
 * No asumir que una librería funcionará basándose solo en su documentación. Ejecutar una prueba técnica directa (spike) que mida latencia y valide compatibilidad con el entorno real antes de dar por cerrada la solución.
 
+## 5. Estándar de Detección de Code Smells y Erradicación de Antipatrones de Arquitectura
+
+Para garantizar legibilidad, bajo costo cognitivo, facilidad de navegación en IDEs y mantenibilidad a largo plazo, todo desarrollo en este repositorio debe respetar estrictamente los siguientes guardrails de diseño:
+
+### 1. Guardrail de Tamaño y Cohesión (Anti-God Object)
+* **Límite de Tamaño de Archivo**: Ningún archivo en las capas `domain/` o `application/` debe exceder **250 líneas de código**. Si un archivo supera este umbral, es una alerta automática de mezcla de responsabilidades.
+* **Principio de Responsabilidad Única (SRP)**: Cada clase o archivo debe tener una única razón para cambiar. Los casos de uso (`UseCases`) deben representar operaciones atómicas de negocio (ej. `FastPathQueryUseCase`, `TacticalAdviceUseCase`), no silos multifunción.
+* **Descomposición con Fachada Delgada (Thin Facade)**: Cuando se refactorice un componente histórico grande, la clase original debe mantenerse temporal o permanentemente como una fachada delegadora delgada (<150 líneas), garantizando 100% de retrocompatibilidad con las capas de presentación (`loop.py`, `cli.py`) y tests existentes.
+
+### 2. Guardrail de Aislamiento de Capas (Anti-Leaky Abstraction)
+* **Prohibición de Infraestructura en Aplicación/Dominio**: Queda terminantemente prohibido importar librerías de infraestructura de bajo nivel (ej. `ctypes`, APIs Win32 `user32`/`gdi32`, clientes HTTP directos o drivers de hardware) dentro de `src/abi_coach/application/` o `src/abi_coach/domain/`.
+* **Inversión de Dependencias (DIP)**: La capa de Aplicación solo define e interactúa con Puertos (`Protocol`). Todo acceso a hardware, sistema operativo o red debe residir en adaptadores dentro de `src/abi_coach/infrastructure/adapters/`.
+
+### 3. Tipado Robusto y Erradicación de Obsesión Primitiva
+* Prohibido propagar diccionarios crudos `Dict[str, Any]` para datos de dominio o comunicación entre capas.
+* Toda transferencia de información entre puertos y adaptadores debe modelarse mediante **Value Objects** o **DTOs inmutables** (`@dataclass(frozen=True)`).
+* Toda operación propensa a fallas de red, parsing o infraestructura debe retornar el **Result Pattern** (`Result[Success[T], Failure[DomainError]]`), erradicando excepciones no controladas o bloques genéricos `except Exception: pass`.
+
+### 4. Protocolo de Refactorización Segura (Safety Net)
+* Antes de modificar o extraer código de una clase con alta carga histórica, se debe verificar que la suite de pruebas automatizadas (`uv run pytest`) esté al 100% en verde.
+* Cada nuevo Caso de Uso o Servicio de Dominio extraído debe acompañarse de sus pruebas unitarias aisladas en `tests/`.
+
 

@@ -3,8 +3,8 @@
 # Windows PE Version Resource file for PyInstaller (VSVersionInfo)
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(0, 2, 2, 0),
-    prodvers=(0, 2, 2, 0),
+    filevers=(0, 2, 3, 0),
+    prodvers=(0, 2, 3, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -20,12 +20,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'Santiago Arguello'),
             StringStruct('FileDescription', 'LLM Game Advisor - Copiloto Tactico Multimodal por Voz'),
-            StringStruct('FileVersion', '0.2.2.0'),
+            StringStruct('FileVersion', '0.2.3.0'),
             StringStruct('InternalName', 'game-advisor'),
             StringStruct('LegalCopyright', 'Copyright (c) 2026 Santiago Arguello. MIT License.'),
             StringStruct('OriginalFilename', 'game-advisor.exe'),
             StringStruct('ProductName', 'LLM Game Advisor'),
-            StringStruct('ProductVersion', '0.2.2.0')
+            StringStruct('ProductVersion', '0.2.3.0')
           ]
         )
       ]
