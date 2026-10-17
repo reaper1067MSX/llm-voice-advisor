@@ -4,7 +4,8 @@ import argparse
 import os
 import sys
 
-from abi_coach.application.orchestration.brain import Brain
+from abi_coach.application.orchestration.advisor_orchestrator import AdvisorOrchestrator
+from abi_coach.domain.entities.interaction_records import InteractionRequest
 from abi_coach.infrastructure.adapters.audio.listener import AudioListener
 from abi_coach.infrastructure.adapters.audio.speaker import Speaker
 from abi_coach.infrastructure.adapters.vision.capture import capture_screen
@@ -136,10 +137,10 @@ def cmd_ask(config, prompt: str) -> None:
         print(f"  ⚠️ Captura de pantalla no disponible ({e}). Continuando con consulta textual...", flush=True)
 
     print(f"🧠 Consultando con {config.gemini.model}...", flush=True)
-    brain = Brain(config)
+    orchestrator = AdvisorOrchestrator(config)
     speaker = Speaker(config.speaker)
 
-    res = brain.ask_result(
+    res = orchestrator.ask_result(
         prompt=prompt,
         image_bytes=image_bytes,
         crop_bytes=crop_bytes,

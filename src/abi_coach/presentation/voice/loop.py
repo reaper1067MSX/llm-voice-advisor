@@ -10,7 +10,8 @@ import time
 from typing import Optional
 import sounddevice as sd
 
-from abi_coach.application.orchestration.brain import Brain
+from abi_coach.application.orchestration.advisor_orchestrator import AdvisorOrchestrator
+from abi_coach.domain.entities.interaction_records import InteractionRequest
 from abi_coach.infrastructure.adapters.audio.listener import AudioListener
 from abi_coach.infrastructure.adapters.audio.speaker import Speaker
 from abi_coach.infrastructure.adapters.vision.capture import capture_screen
@@ -101,7 +102,7 @@ def run_interactive_loop(config) -> None:
     listener = AudioListener(config.listener)
     listener.init_whisper()
     print(f"  [3/4] 🧠 Conectando con {provider_label} ({active_model})...", flush=True)
-    brain = Brain(config)
+    orchestrator = AdvisorOrchestrator(config)
     print("  [4/4] 🎧 Abriendo stream de micrófono y búfer circular (16 kHz)...", flush=True)
     listener.start_stream()
 
@@ -264,7 +265,7 @@ def run_interactive_loop(config) -> None:
 
         print(f"[{now_str}] ⏳ [PROCESANDO] Consultando modelo táctico...", flush=True)
 
-        res = brain.ask_result(
+        res = orchestrator.ask_result(
             prompt=transcript,
             image_bytes=img_bytes,
             crop_bytes=crp_bytes,

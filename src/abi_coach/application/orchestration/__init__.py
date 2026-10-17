@@ -1,5 +1,6 @@
-"""Orchestration package: central brain facade and multimodal inference pipeline."""
+"""Orchestration package: advisor orchestrator and process pipelines."""
 
+from abi_coach.application.orchestration.advisor_orchestrator import AdvisorOrchestrator
 from abi_coach.application.orchestration.brain import (
     ABI_SYSTEM_INSTRUCTION,
     COACH_SYSTEM_INSTRUCTION,
@@ -11,6 +12,7 @@ from abi_coach.application.orchestration.brain import (
 )
 
 __all__ = [
+    "AdvisorOrchestrator",
     "Brain",
     "CoachResponse",
     "Turn",
