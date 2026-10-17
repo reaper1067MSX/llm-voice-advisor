@@ -63,3 +63,26 @@ Cuando una tarea involucre refactorizaciones estructurales, nuevos subsistemas, 
 5. **Mapeo Explícito en el Árbol de Código**:
    * Listar las rutas exactas de archivos a crear o modificar (`src/...`, `tests/...`, `presets/...`) indicando qué clase o función residirá en cada ubicación.
 
+## 4. Estándar de Evaluación y Adopción de Herramientas y Librerías
+
+Al seleccionar, recomendar o reemplazar cualquier herramienta, librería, API de sistema o modelo de IA, se debe seguir estrictamente este protocolo de evaluación antes de su integración:
+
+### 1. Prioridad: Modernidad y Mantenimiento Activo (Adopt vs. Hold)
+* **Herramientas Modernas como Primera Opción (`Adopt`)**: Se debe priorizar siempre la tecnología más actual, respaldada por la arquitectura nativa del sistema operativo objetivo (ej. Windows Graphics Capture / Direct3D11 sobre GDI BitBlt, Silero VAD sobre umbrales de energía simples, modelos con endpoints optimizados).
+* **Librerías Legacy solo como Fallback (`Hold`)**: Las herramientas antiguas o monolíticas solo se admiten como mecanismos secundarios de contingencia en caso de que el entorno host carezca del soporte moderno. Nunca serán la ruta de ejecución primaria.
+* **Verificación de Mantenimiento**: Comprobar en GitHub/PyPI que la librería tenga commits recientes, soporte para las versiones actuales del lenguaje/SO y resolución activa de issues.
+
+### 2. Ecuación Costo-Beneficio: Compatibilidad y Tiempo de Procesamiento
+Toda herramienta debe evaluarse en dos ejes fundamentales:
+* **Compatibilidad en Condiciones Reales de Uso**: Evaluar cómo interactúa la herramienta con el stack completo del usuario (ej. streaming en Discord/OBS, aceleración por hardware GPU, overlays de juegos, drivers de audio). Si una herramienta falla en presencia de software de streaming o DirectX, queda descalificada como opción primaria.
+* **Tiempo de Procesamiento (Latencia)**: Medir el costo en milisegundos de la operación. En flujos de interacción en tiempo real o voz, cualquier herramienta o modelo cuya latencia supere los requerimientos de respuesta (<2-3s) debe ser sustituida o desacoplada a procesamiento asíncrono.
+
+### 3. Investigación Exhaustiva Previa
+Antes de proponer una nueva dependencia o arquitectura:
+* Investigar a fondo en **Stack Overflow, Google, documentación oficial y GitHub Issues** los problemas conocidos, colisiones con software de terceros (ej. Discord hooks, antivirus, DirectX swapchains) y alternativas modernas recomendadas por la comunidad técnica.
+* Contrastar con paradigmas de ingeniería de software (ATAM, ThoughtWorks Tech Radar) para justificar técnicamente el tradeoff adoptado.
+
+### 4. Validación Empírica Mediante Spike
+* No asumir que una librería funcionará basándose solo en su documentación. Ejecutar una prueba técnica directa (spike) que mida latencia y valide compatibilidad con el entorno real antes de dar por cerrada la solución.
+
+

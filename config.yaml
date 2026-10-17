@@ -6,12 +6,38 @@
 llm:
   provider: "gemini"
 
+# Orquestador Resiliente (Circuit Breaker y Rotación en Caliente)
+resilience:
+  enabled: true
+  failure_threshold: 2
+  recovery_timeout_sec: 30.0
+  # Cascada de contingencia si el modelo primario falla (503 / timeout)
+  # Opciones: "gemini-lite", "moonshot", "nvidia"
+  fallback_cascade:
+    - "gemini-lite"
+    - "moonshot"
+
 gemini:
-  # Modelo ultra rápido para visión y análisis con cero saturación
-  model: "gemini-3.1-flash-lite-preview"
+  # Modelo multimodal ultra-rápido para análisis táctico y visión en tiempo real (<2s)
+  model: "gemini-3.5-flash"
   # Opciones: high, medium, low (en Gemini 3 / 2.5 regula la resolución interna de imagen)
   media_resolution: "medium"
+  # Presupuesto de razonamiento (0 = desactivado para latencia mínima de voz)
+  thinking_budget: 0
+  # Límite de tokens de salida para respuesta hablada ágil
+  max_output_tokens: 250
+  # Preset activo del juego ("abi", "once_human", "generic")
+  game: "once_human"
+  temperature: 0.2
+
+moonshot:
+  # Modelo de contingencia Kimi (Moonshot AI) o proveedores compatibles con OpenAI
+  model: "moonshot-v1-8k"
+  base_url: "https://api.moonshot.cn/v1"
+  api_key_env: "MOONSHOT_API_KEY"
   temperature: 0.3
+  max_tokens: 250
+  timeout_sec: 6.0
 
 nvidia:
   # Modelo multimodal en catálogo build.nvidia.com (requiere 'uv add openai')
@@ -48,6 +74,9 @@ listener:
   # Modo de escucha:
   #   "continuous" = Manos libres (VAD): Habla naturalmente, detecta tu voz y responde sin tocar teclas.
   mode: "continuous"
+
+  # Tecla de alternancia de silencio (Mute Toggle): Silencia el micro mientras estás en llamada de Discord
+  mute_key: "f10"
 
   sample_rate: 16000
   # Umbral de detección de voz (Silero VAD / RMS): Silero filtra ruido de tecleo y respiración

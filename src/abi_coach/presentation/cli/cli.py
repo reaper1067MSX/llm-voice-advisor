@@ -35,6 +35,13 @@ def check_api_keys(config) -> bool:
         )
         if not api_key or api_key.strip() in ("", "tu_clave_de_nvidia_aqui"):
             missing = True
+    elif provider in ("moonshot", "kimi"):
+        provider_name = "Moonshot AI (Kimi)"
+        key_name = "MOONSHOT_API_KEY"
+        url = "https://platform.moonshot.cn/"
+        api_key = getattr(getattr(config, "moonshot", None), "api_key", None) or os.getenv("MOONSHOT_API_KEY")
+        if not api_key or api_key.strip() in ("", "tu_clave_de_moonshot_aqui"):
+            missing = True
 
     if missing:
         print("\n" + "=" * 74, flush=True)
@@ -118,8 +125,15 @@ def cmd_ask(config, prompt: str) -> None:
     """Ask a question using text prompt + live screen capture without microphone."""
     print(f'💬 Pregunta: "{prompt}"', flush=True)
     print("📸 Capturando pantalla...", flush=True)
-    capture_res = capture_screen(config.capture)
-    print(f"  • Captura lista en {capture_res.total_time_ms:.1f} ms ({len(capture_res.full_image_bytes) / 1024:.1f} KB)", flush=True)
+    image_bytes = None
+    crop_bytes = None
+    try:
+        capture_res = capture_screen(config.capture)
+        image_bytes = capture_res.full_image_bytes
+        crop_bytes = capture_res.crop_bytes
+        print(f"  • Captura lista en {capture_res.total_time_ms:.1f} ms ({len(capture_res.full_image_bytes) / 1024:.1f} KB)", flush=True)
+    except Exception as e:
+        print(f"  ⚠️ Captura de pantalla no disponible ({e}). Continuando con consulta textual...", flush=True)
 
     print(f"🧠 Consultando con {config.gemini.model}...", flush=True)
     brain = Brain(config)
@@ -127,8 +141,8 @@ def cmd_ask(config, prompt: str) -> None:
 
     res = brain.ask_result(
         prompt=prompt,
-        image_bytes=capture_res.full_image_bytes,
-        crop_bytes=capture_res.crop_bytes,
+        image_bytes=image_bytes,
+        crop_bytes=crop_bytes,
     )
     if res.is_err():
         spoken_msg = res.error.get_spoken_message()

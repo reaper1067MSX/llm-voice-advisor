@@ -1,12 +1,13 @@
 [project]
 name = "llm-voice-advisor"
-version = "0.2.2"
+version = "0.2.3"
 description = "Real-time Multimodal AI Gaming Voice Advisor & Tactical Co-pilot with VAD, local GPU Whisper STT, Natural TTS, Smart Visual Inference, and dynamic secondary-monitor dashboards."
 authors = [
     { name = "Santiago Arguello", email = "geovanny1067@hotmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "dxcam>=0.3.0",
     "edge-tts>=7.3.1",
     "faster-whisper>=1.2.1",
     "google-genai>=2.30.1",
@@ -20,6 +21,7 @@ dependencies = [
     "pyttsx3>=2.99",
     "pyyaml>=6.0.3",
     "sounddevice>=0.5.6",
+    "windows-capture>=2.0.1",
 ]
 
 [project.scripts]
