@@ -383,15 +383,15 @@ def test_clean_root_directory_structure():
     assert entries == expected, f"Unexpected entries in src/abi_coach/: {entries ^ expected}"
 
 
-def test_v020_version_info_and_smartscreen_release_helpers(tmp_path: Path):
-    """Task 5.1: Verify v0.2.0 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
+def test_v021_version_info_and_smartscreen_release_helpers(tmp_path: Path):
+    """Verify v0.2.1 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
     import importlib.util
 
     project_root = Path(abi_coach.__file__).resolve().parent.parent.parent
-    assert abi_coach.__version__ == "0.2.0"
+    assert abi_coach.__version__ == "0.2.1"
 
     pyproject_text = (project_root / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.2.0"' in pyproject_text
+    assert 'version = "0.2.1"' in pyproject_text
 
     version_info_path = project_root / "version_info.txt"
     assert version_info_path.is_file()
@@ -399,8 +399,8 @@ def test_v020_version_info_and_smartscreen_release_helpers(tmp_path: Path):
     assert "VSVersionInfo(" in v_text
     assert "StringStruct('CompanyName', 'Santiago Arguello')" in v_text
     assert "StringStruct('ProductName', 'LLM Game Advisor')" in v_text
-    assert "StringStruct('FileVersion', '0.2.0.0')" in v_text
-    assert "filevers=(0, 2, 0, 0)" in v_text
+    assert "StringStruct('FileVersion', '0.2.1.0')" in v_text
+    assert "filevers=(0, 2, 1, 0)" in v_text
 
     spec_text = (project_root / "game_advisor.spec").read_text(encoding="utf-8")
     assert "version_info.txt" in spec_text
@@ -418,5 +418,30 @@ def test_v020_version_info_and_smartscreen_release_helpers(tmp_path: Path):
     assert unblock_bat.is_file()
     assert "Unblock-File" in launcher_bat.read_text(encoding="utf-8")
     assert "TrustedPublisher" in unblock_bat.read_text(encoding="utf-8")
+
+
+def test_kaspersky_pdm_exploit_heuristics_eliminated():
+    """Verify that suspicious Win32 APIs triggering PDM:Exploit heuristics are eliminated from src/."""
+    project_root = Path(abi_coach.__file__).resolve().parent.parent.parent
+    src_dir = project_root / "src" / "abi_coach"
+
+    forbidden_patterns = [
+        "OpenInputDesktop",
+        "WScript.Shell",
+        "keybd_event",
+        "OpenProcess",
+        "SwitchToThisWindow",
+        r"WinSta0\Default",
+    ]
+
+    violations = []
+    for py_file in src_dir.rglob("*.py"):
+        content = py_file.read_text(encoding="utf-8")
+        for pattern in forbidden_patterns:
+            if pattern in content:
+                violations.append(f"{py_file.relative_to(project_root)}: contains '{pattern}'")
+
+    assert not violations, f"Detected suspicious Win32 APIs in production code: {violations}"
+
 
 

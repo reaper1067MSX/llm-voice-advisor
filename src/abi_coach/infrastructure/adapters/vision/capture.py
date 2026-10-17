@@ -7,7 +7,6 @@ Runs capture in a dedicated thread to ensure clean input desktop attachment.
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-import ctypes
 import io
 import os
 from pathlib import Path
@@ -31,15 +30,7 @@ class ProcessedCapture:
 
 
 def _grab_raw_image(monitor_index: int) -> Image.Image:
-    """Runs inside a clean worker thread to safely attach to the Windows active desktop."""
-    if os.name == "nt":
-        try:
-            user32 = ctypes.windll.user32
-            desk = user32.OpenInputDesktop(0, False, 0x01FF)
-            if desk:
-                user32.SetThreadDesktop(desk)
-        except Exception:
-            pass
+    """Runs inside a dedicated worker thread to grab screen contents via MSS or ImageGrab."""
 
     # Try MSS first
     try:

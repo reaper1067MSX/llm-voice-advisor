@@ -270,42 +270,14 @@ def _get_secondary_monitor_bounds() -> Optional[Tuple[int, int, int, int]]:
         return None
 
 
-def _get_process_name_for_hwnd(hwnd: int) -> str:
-    """Safely get executable filename for a window handle."""
-    if os.name != "nt":
-        return ""
-    try:
-        user32 = ctypes.windll.user32
-        kernel32 = ctypes.windll.kernel32
-        psapi = ctypes.windll.psapi
-
-        pid = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        hproc = kernel32.OpenProcess(0x1000, False, pid.value)
-        if hproc:
-            buf = ctypes.create_unicode_buffer(1024)
-            pname = ""
-            if psapi.GetProcessImageFileNameW(hproc, buf, 1024):
-                pname = buf.value.split("\\")[-1].lower()
-            kernel32.CloseHandle(hproc)
-            return pname
-    except Exception:
-        pass
-    return ""
-
-
 def _bring_browser_to_front_worker(
     browser_type: str, title_query: str = "", focus_browser: bool = False
 ) -> None:
-    """Attach to desktop, unminimize, move to secondary monitor, and maximize without yellow taskbar flash."""
+    """Unminimize, move to secondary monitor, and maximize browser window without invasive hooks."""
     if os.name != "nt":
         return
     try:
         user32 = ctypes.windll.user32
-        desk = user32.OpenInputDesktop(0, False, 0x01FF)
-        if desk:
-            user32.SetThreadDesktop(desk)
-
         sec_bounds = _get_secondary_monitor_bounds()
         target_hwnd = None
         lower_query = title_query.lower().strip() if title_query else ""
@@ -334,11 +306,14 @@ def _bring_browser_to_front_worker(
                         matching_hwnds.append(hwnd)
                 elif browser_type in ("edge", "chrome"):
                     if cls_val == "Chrome_WidgetWin_1":
-                        # Exclude IDEs, Discord, NVIDIA Broadcast
-                        pname = _get_process_name_for_hwnd(hwnd)
-                        expected = "msedge.exe" if browser_type == "edge" else "chrome.exe"
-                        if pname == expected or expected.split(".")[0] in w_title or (lower_query and lower_query in w_title):
-                            matching_hwnds.append(hwnd)
+                        # Exclude non-browser Electron apps (VS Code, Discord, Slack, Spotify, Teams)
+                        if not any(
+                            app in w_title
+                            for app in ("visual studio code", "discord", "slack", "spotify", "teams")
+                        ):
+                            expected = "edge" if browser_type == "edge" else "chrome"
+                            if expected in w_title or (lower_query and lower_query in w_title):
+                                matching_hwnds.append(hwnd)
                 return True
 
             WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
@@ -365,31 +340,11 @@ def _bring_browser_to_front_worker(
         user32.ShowWindow(target_hwnd, 3)  # SW_MAXIMIZE
 
         if focus_browser:
-            # Topmost flip forces window to top of the screen Z-order
-            HWND_TOPMOST = -1
-            HWND_NOTOPMOST = -2
-            SWP_NOMOVE = 0x0002
-            SWP_NOSIZE = 0x0001
-            SWP_SHOWWINDOW = 0x0040
-
-            user32.SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
-            time.sleep(0.04)
-            user32.SetWindowPos(target_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+            # Clean foreground activation without synthetic Alt key injection or WScript
             user32.BringWindowToTop(target_hwnd)
-
-            # Bypass Windows 11 ForegroundLockTimeout via harmless Alt key
-            try:
-                import win32com.client
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("%")
-            except Exception:
-                user32.keybd_event(0x12, 0, 0, 0)
-                user32.keybd_event(0x12, 0, 2, 0)
-
             user32.SetForegroundWindow(target_hwnd)
-            user32.SwitchToThisWindow(target_hwnd, True)
         else:
-            # Position without stealing input focus from active game
+            # Ensure window is visible on secondary monitor without stealing game focus
             SWP_NOMOVE = 0x0002
             SWP_NOSIZE = 0x0001
             SWP_SHOWWINDOW = 0x0040
@@ -420,16 +375,13 @@ def open_and_maximize_in_browser(
 
     if browser_path:
         try:
-            si = subprocess.STARTUPINFO()
-            if os.name == "nt":
-                si.lpDesktop = r"WinSta0\Default"
-
             if browser_type == "firefox":
                 args = [browser_path, "-new-window", file_path]
             else:
                 args = [browser_path, "--new-window", file_path]
 
-            subprocess.Popen(args, startupinfo=si, shell=False)
+            startupinfo = subprocess.STARTUPINFO() if os.name == "nt" else None
+            subprocess.Popen(args, startupinfo=startupinfo, shell=False)
 
             # Fire and forget background worker for window raising
             t = threading.Thread(
