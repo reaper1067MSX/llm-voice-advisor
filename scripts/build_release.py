@@ -231,7 +231,12 @@ automáticamente en tu segundo monitor.
     print("  * LEEME.txt generado con exito en dist/")
 
     # 7. Empaquetar en archivo ZIP para GitHub Releases
-    zip_name = "game-advisor-windows-x64-v0.2.1.zip"
+    try:
+        import abi_coach
+        ver = abi_coach.__version__
+    except Exception:
+        ver = "0.2.2"
+    zip_name = f"game-advisor-windows-x64-v{ver}.zip"
     zip_path = root / "dist" / zip_name
     print(f"\n>> Comprimiendo paquete release para GitHub: {zip_name}...", flush=True)
     import zipfile
