@@ -55,11 +55,8 @@ class AdvisorOrchestrator:
     """Unified generic orchestrator coordinating tactical interaction resolution."""
 
     def __init__(
-        self,
-        config: Optional[AppConfig] = None,
-        provider: Optional[LLMProvider] = None,
-        services: Optional[AdvisorServices] = None,
-        report_opener: Optional[Callable[[str], Any]] = None,
+        self, config: Optional[AppConfig] = None, provider: Optional[LLMProvider] = None,
+        services: Optional[AdvisorServices] = None, report_opener: Optional[Callable[[str], Any]] = None,
         **kwargs: Any,
     ) -> None:
         from abi_coach.application.orchestration.fsm import TacticalFSM
@@ -168,7 +165,10 @@ class AdvisorOrchestrator:
 
     def ask_result(self, prompt: str, image_bytes: Optional[bytes] = None, crop_bytes: Optional[Dict[str, bytes]] = None, screenshot: Optional[bytes] = None, **kwargs: Any) -> Result[InteractionResult, DomainError]:
         @dataclass(frozen=True)
-        class _Cmd: prompt: str; img: Optional[bytes]; crop: Optional[Dict[str, bytes]]
+        class _Cmd:
+            prompt: str
+            img: Optional[bytes]
+            crop: Optional[Dict[str, bytes]]
         def _h(cmd: _Cmd) -> Result[InteractionResult, DomainError]:
             try: return ok(self.ask(prompt=cmd.prompt, image_bytes=cmd.img, crop_bytes=cmd.crop))
             except Exception as exc:

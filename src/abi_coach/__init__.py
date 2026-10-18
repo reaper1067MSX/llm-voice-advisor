@@ -31,6 +31,8 @@ _LAZY_IMPORTS: Dict[str, Tuple[str, str]] = {
     "GameContext": ("abi_coach.domain", "GameContext"),
     "PlayerMemory": ("abi_coach.domain", "PlayerMemory"),
     "TacticalFact": ("abi_coach.domain", "TacticalFact"),
+    "MemoryDashboardItem": ("abi_coach.domain", "MemoryDashboardItem"),
+    "KnowledgeDashboardItem": ("abi_coach.domain", "KnowledgeDashboardItem"),
     "LLMProviderPort": ("abi_coach.domain", "LLMProviderPort"),
     "LLMResponseDTO": ("abi_coach.domain", "LLMResponseDTO"),
     # Application Layer (Vertical Slices & Middlewares)
