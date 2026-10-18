@@ -1,6 +1,12 @@
 # Reglas de Espacio de Trabajo — Flujo de Integración Git
 
-## 1. Invariante de Protección de Rama
+## 1. Invariante de Protección de Rama y Gobernanza
+
+### 1.1. Dueño y Aprobador Único del Repositorio (AP Gate)
+* **Aprobador Exclusivo**: El único usuario facultado para autorizar la integración de cambios en el repositorio es `reaper1067MSX` (Santiago Argüello).
+* **Prohibición de Auto-Merge**: Ningún agente de IA o subagente tiene permitido ejecutar `gh pr merge`, push a ramas protegidas ni dar por concluido un PR sin la confirmación explícita de aprobación (`AP`, "aprobado", "mergea") otorgada por el dueño en la conversación para ese PR puntual.
+
+### 1.2. Protección de Ramas
 * **PROHIBIDO hacer push directo a `master` o `main`**: El comando `git push origin master` o `git push origin main` está estrictamente vetado.
 * Todo cambio, refactorización, corrección o nueva funcionalidad debe desarrollarse en una rama separada y unirse únicamente mediante un **Pull Request**.
 
@@ -84,5 +90,40 @@ Antes de proponer una nueva dependencia o arquitectura:
 
 ### 4. Validación Empírica Mediante Spike
 * No asumir que una librería funcionará basándose solo en su documentación. Ejecutar una prueba técnica directa (spike) que mida latencia y valide compatibilidad con el entorno real antes de dar por cerrada la solución.
+
+## 5. Estándar de Detección de Code Smells y Erradicación de Antipatrones de Arquitectura
+
+Para garantizar legibilidad, bajo costo cognitivo, facilidad de navegación en IDEs y mantenibilidad a largo plazo, todo desarrollo en este repositorio debe respetar estrictamente los siguientes guardrails de diseño:
+
+### 1. Guardrail de Tamaño y Cohesión (Anti-God Object)
+* **Límite de Tamaño de Archivo**: Ningún archivo en las capas `domain/` o `application/` debe exceder **250 líneas de código**. Si un archivo supera este umbral, es una alerta automática de mezcla de responsabilidades.
+* **Principio de Responsabilidad Única (SRP)**: Cada clase o archivo debe tener una única razón para cambiar. Los casos de uso (`UseCases`) representan la orquestación de un proceso de negocio atómico (ej. `TacticalQueryOrchestrator`, `GameContextSwitchUseCase`), no silos multifunción ni fragmentaciones artificiales por tecnología de persistencia o tiempo de respuesta.
+* **Descomposición con Fachada Delgada (Thin Facade)**: Cuando se refactorice un componente histórico grande, la clase original debe mantenerse temporal o permanentemente como una fachada delegadora delgada (<150 líneas), garantizando 100% de retrocompatibilidad con las capas de presentación (`loop.py`, `cli.py`) y tests existentes.
+
+### 2. Guardrail de Aislamiento de Capas (Anti-Leaky Abstraction)
+* **Prohibición de Infraestructura en Aplicación/Dominio**: Queda terminantemente prohibido importar librerías de infraestructura de bajo nivel (ej. `ctypes`, APIs Win32 `user32`/`gdi32`, clientes HTTP directos o drivers de hardware) dentro de `src/abi_coach/application/` o `src/abi_coach/domain/`.
+* **Inversión de Dependencias (DIP)**: La capa de Aplicación solo define e interactúa con Puertos (`Protocol`). Todo acceso a hardware, sistema operativo o red debe residir en adaptadores dentro de `src/abi_coach/infrastructure/adapters/`.
+
+### 3. Tipado Robusto y Erradicación de Obsesión Primitiva
+* Prohibido propagar diccionarios crudos `Dict[str, Any]` para datos de dominio o comunicación entre capas.
+* Toda transferencia de información entre puertos y adaptadores debe modelarse mediante **Value Objects** o **DTOs inmutables** (`@dataclass(frozen=True)`).
+* Toda operación propensa a fallas de red, parsing o infraestructura debe retornar el **Result Pattern** (`Result[Success[T], Failure[DomainError]]`), erradicando excepciones no controladas o bloques genéricos `except Exception: pass`.
+
+### 4. Protocolo de Refactorización Segura (Safety Net)
+* Antes de modificar o extraer código de una clase con alta carga histórica, se debe verificar que la suite de pruebas automatizadas (`uv run pytest`) esté al 100% en verde.
+* Cada nuevo Caso de Uso o Servicio de Dominio extraído debe acompañarse de sus pruebas unitarias aisladas en `tests/`.
+
+### 5. Orquestación Genérica de Procesos y Segregación de Contextos (Orchestrator & Strategy Pattern)
+* **Tríada de Consulta: Query, Contexto y Orquestador**:
+  1. **Query Genérica (Agnóstica de Información)**: La consulta (`TacticalQuery`) es un contrato o DTO puro que encapsula la entrada del usuario (texto, audio, imagen) sin conocer reglas específicas, tablas de base de datos ni lógica cableada de ningún juego.
+  2. **Contexto Autónomo (Funcionalidad y Conocimiento Propio)**: Cada contexto de juego (`GameContext`, ej. ABI, Once Human) encapsula su propia funcionalidad: sus reglas factuales deterministas, perfiles arquetípicos y repositorio de conocimiento RAG. El contexto es el dueño de la información de su dominio.
+  3. **Orquestador General de Procesos**: Existe un único proceso orquestador (`TacticalQueryOrchestrator`) que unifica la resolución: consulta al contexto activo si puede resolver deterministamente (sub-2ms), y si no, orquesta el enriquecimiento contextual y la inferencia generativa multimodal con el LLM.
+* **Prohibición de Fragmentación de Casos de Uso por Capa de Ejecución**: Queda prohibido crear casos de uso separados para "Fast Path" y "LLM Advice". La decisión de resolver por caché/reglas locales o por modelo generativo es una estrategia interna del orquestador, transparente para quien consume la API.
+
+### 6. Estándar de Cohesión e Higiene en Pruebas Unitarias (Clean Tests)
+* **Principio de Responsabilidad Única en Tests**: Cada archivo de prueba en `tests/` debe validar un único componente, servicio o caso de uso. Prohibido acumular pruebas heterogéneas en archivos monolíticos.
+* **Erradicación del Import Clumping**: Los tests deben importar sus dependencias directamente desde el módulo origen de verdad, nunca a través de fachadas delegadoras ni re-exportaciones convenientes.
+* **Enfoque en Comportamiento Observable**: Eliminar pruebas triviales que solo verifiquen asignaciones de atributos en constructores o llamadas a mocks sin valor semántico. Las pruebas deben validar contratos, transiciones de estado y respuestas ante fallos.
+
 
 

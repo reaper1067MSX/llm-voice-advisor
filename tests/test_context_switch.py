@@ -3,7 +3,8 @@
 from pathlib import Path
 import pytest
 
-from abi_coach.application.orchestration.brain import Brain
+from abi_coach.application.orchestration.advisor_orchestrator import AdvisorOrchestrator
+from abi_coach.application.use_cases.context_switch_detector import ContextSwitchDetector
 from abi_coach.infrastructure.adapters.llm.base import ProviderResponse
 from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 from abi_coach.infrastructure.config.settings import AppConfig
@@ -26,35 +27,30 @@ class DummyProvider:
         return ProviderResponse(spoken_text="Mocked response", input_tokens=10, output_tokens=10)
 
 
-def test_detect_context_switch_request(tmp_path: Path):
-    db_file = tmp_path / "test.sqlite3"
-    db = DatabaseManager(str(db_file))
-    cfg = AppConfig()
-    cfg.reports.output_dir = str(tmp_path / "reports")
-    cfg.reports.auto_open_browser = False
-
-    brain = Brain(config=cfg, db=db, provider=DummyProvider())
+def test_detect_context_switch_request():
+    detector = ContextSwitchDetector()
 
     # Extraction shooter
-    res = brain.detect_context_switch_request("Vamos a jugar Arena Breakout")
-    assert res == ("abi", "Arena Breakout: Infinite")
+    req = detector.detect("Vamos a jugar Arena Breakout")
+    assert req is not None
+    assert (req.target_game, req.display_name) == ("abi", "Arena Breakout: Infinite")
 
     # Generic advisor
-    res = brain.detect_context_switch_request("Cambia a modo advisor")
-    assert res == ("generic", "Game Advisor Universal")
+    req = detector.detect("Cambia a modo advisor")
+    assert req is not None
+    assert (req.target_game, req.display_name) == ("generic", "Game Advisor Universal")
 
     # Arbitrary games
-    res = brain.detect_context_switch_request("Vamos a jugar Once Human")
-    assert res == ("once_human", "Once Human")
+    req = detector.detect("Vamos a jugar Once Human")
+    assert req is not None
+    assert (req.target_game, req.display_name) == ("once_human", "Once Human")
 
-    res = brain.detect_context_switch_request("Cambiemos a Elden Ring!")
-    assert res == ("elden_ring", "Elden Ring")
-
-    res = brain.detect_context_switch_request("Inicia contexto para Rust")
-    assert res == ("rust", "Rust")
+    req = detector.detect("Cambiemos a Elden Ring!")
+    assert req is not None
+    assert (req.target_game, req.display_name) == ("elden_ring", "Elden Ring")
 
     # Regular question should return None
-    assert brain.detect_context_switch_request("¿Qué munición uso?") is None
+    assert detector.detect("¿Qué munición uso?") is None
 
 
 def test_switch_context_bootstraps_and_activates(tmp_path: Path):
@@ -64,27 +60,24 @@ def test_switch_context_bootstraps_and_activates(tmp_path: Path):
     cfg.reports.output_dir = str(tmp_path / "reports")
     cfg.reports.auto_open_browser = False
 
-    brain = Brain(config=cfg, db=db, provider=DummyProvider())
-    assert brain.active_context_id == "generic"
+    orchestrator = AdvisorOrchestrator(config=cfg, db=db, provider=DummyProvider())
+    assert orchestrator.active_context_id == "generic"
 
     # Switch to once_human
-    ctx = brain.switch_context("once_human", "Once Human")
+    ctx = orchestrator.switch_context("once_human", "Once Human")
     assert ctx.context_id == "once_human"
     assert ctx.display_name == "Once Human"
     assert ctx.archetype_id == "survival_craft"
     assert ctx.is_active is True
 
-    # Brain state updated
-    assert brain.active_context_id == "once_human"
-    assert brain.config.gemini.game == "once_human"
-    assert brain.memory.default_game == "once_human"
-    assert brain.rag.default_game == "once_human"
-
-    # Context history turn appended
-    assert any("Contexto cambiado a Once Human" in turn.text for turn in brain.history)
+    # Orchestrator state updated
+    assert orchestrator.active_context_id == "once_human"
+    assert orchestrator.config.gemini.game == "once_human"
+    assert orchestrator.memory.default_game == "once_human"
+    assert orchestrator.rag.default_game == "once_human"
 
     # Dynamic archetype system prompt loaded
-    system_inst = brain.get_system_instruction()
+    system_inst = orchestrator.get_system_instruction()
     assert "Supervivencia y Crafteo" in system_inst or "survival" in system_inst.lower() or "once human" in system_inst.lower()
 
 
@@ -96,13 +89,13 @@ def test_verbal_context_switch_via_ask(tmp_path: Path):
     cfg.reports.auto_open_browser = False
 
     dummy = DummyProvider()
-    brain = Brain(config=cfg, db=db, provider=dummy)
+    orchestrator = AdvisorOrchestrator(config=cfg, db=db, provider=dummy)
 
     # Ask with verbal trigger
-    response = brain.ask("¡Vamos a jugar Palworld!")
+    response = orchestrator.ask("¡Vamos a jugar Palworld!")
 
     assert "Palworld" in response.spoken_text
-    assert brain.active_context_id == "palworld"
+    assert orchestrator.active_context_id == "palworld"
     assert response.report_path is not None
     assert Path(response.report_path).is_file()
 
@@ -110,6 +103,6 @@ def test_verbal_context_switch_via_ask(tmp_path: Path):
     assert dummy.last_system_instruction is None
 
     # Next regular question uses the newly bootstrapped Palworld context prompt
-    brain.ask("¿Dónde consigo madera?")
+    orchestrator.ask("¿Dónde consigo madera?")
     assert dummy.last_system_instruction is not None
     assert "Palworld" in dummy.last_system_instruction

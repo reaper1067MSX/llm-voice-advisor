@@ -384,14 +384,14 @@ def test_clean_root_directory_structure():
 
 
 def test_v021_version_info_and_smartscreen_release_helpers(tmp_path: Path):
-    """Verify v0.2.2 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
+    """Verify v0.2.3 version bump, PE VSVersionInfo file, PyInstaller spec wiring, and SmartScreen batch helpers."""
     import importlib.util
 
     project_root = Path(abi_coach.__file__).resolve().parent.parent.parent
-    assert abi_coach.__version__ == "0.2.2"
+    assert abi_coach.__version__ == "0.2.3"
 
     pyproject_text = (project_root / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.2.2"' in pyproject_text
+    assert 'version = "0.2.3"' in pyproject_text
 
     version_info_path = project_root / "version_info.txt"
     assert version_info_path.is_file()
@@ -399,8 +399,8 @@ def test_v021_version_info_and_smartscreen_release_helpers(tmp_path: Path):
     assert "VSVersionInfo(" in v_text
     assert "StringStruct('CompanyName', 'Santiago Arguello')" in v_text
     assert "StringStruct('ProductName', 'LLM Game Advisor')" in v_text
-    assert "StringStruct('FileVersion', '0.2.2.0')" in v_text
-    assert "filevers=(0, 2, 2, 0)" in v_text
+    assert "StringStruct('FileVersion', '0.2.3.0')" in v_text
+    assert "filevers=(0, 2, 3, 0)" in v_text
 
     spec_text = (project_root / "game_advisor.spec").read_text(encoding="utf-8")
     assert "version_info.txt" in spec_text
