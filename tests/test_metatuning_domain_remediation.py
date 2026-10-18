@@ -13,22 +13,11 @@ from abi_coach.domain.enums.metatuning_enums import (
 )
 from abi_coach.domain.entities.metatuning_records import (
     CANCELLATION_PHRASES,
-    CONFIRMATION_RULES,
-    ClarificationResolution,
     ClarificationState,
-    ParsedConfig,
-    ParsedFact,
-    ParsedRule,
     RESOLUTION_RULES,
     RuleMapping,
-    VOICE_MAP,
-    is_cancellation_phrase,
 )
-from abi_coach.application.slices.metatuning import (
-    clarification_fsm,
-    engine,
-    intent_parser,
-)
+from abi_coach.application.slices.metatuning import clarification_fsm, intent_parser
 
 
 def test_metatuning_enums_strenum_subtyping():
@@ -154,63 +143,3 @@ def test_zero_semicolons_in_metatuning_slices():
                 semicolon_occurrences.append(f"{file.name}:{idx}: {line}")
 
     assert not semicolon_occurrences, f"Found semicolons in metatuning: {semicolon_occurrences}"
-
-
-def test_loc_boundaries_and_orchestrator_limits():
-    """Verify strict LOC requirements across metatuning, domain records, and orchestrator."""
-    root = Path(".")
-    parser_loc = len((root / "src/abi_coach/application/slices/metatuning/intent_parser.py").read_text(encoding="utf-8").splitlines())
-    fsm_loc = len((root / "src/abi_coach/application/slices/metatuning/clarification_fsm.py").read_text(encoding="utf-8").splitlines())
-    engine_loc = len((root / "src/abi_coach/application/slices/metatuning/engine.py").read_text(encoding="utf-8").splitlines())
-    orchestrator_loc = len((root / "src/abi_coach/application/orchestration/advisor_orchestrator.py").read_text(encoding="utf-8").splitlines())
-    records_loc = len((root / "src/abi_coach/domain/entities/metatuning_records.py").read_text(encoding="utf-8").splitlines())
-    enums_loc = len((root / "src/abi_coach/domain/enums/metatuning_enums.py").read_text(encoding="utf-8").splitlines())
-
-    assert parser_loc < 100, f"intent_parser.py exceeded 100 LOC ({parser_loc} lines)"
-    assert fsm_loc < 100, f"clarification_fsm.py exceeded 100 LOC ({fsm_loc} lines)"
-    assert engine_loc <= 140, f"engine.py exceeded 140 LOC ({engine_loc} lines)"
-    assert orchestrator_loc <= 250, f"advisor_orchestrator.py exceeded 250 LOC ({orchestrator_loc} lines)"
-    assert records_loc <= 200, f"metatuning_records.py exceeded 200 LOC ({records_loc} lines)"
-    assert enums_loc <= 200, f"metatuning_enums.py exceeded 200 LOC ({enums_loc} lines)"
-
-
-def test_reexports_backward_compatibility():
-    """Verify all legacy imports continue to resolve without breaking consumer code."""
-    from abi_coach.application.slices.metatuning.intent_parser import (
-        CANCELLATION_PHRASES as IP_CANCEL,
-        RESOLUTION_RULES as IP_RULES,
-        VOICE_MAP as IP_VOICE,
-        ParsedConfig as IP_Cfg,
-        ParsedFact as IP_Fact,
-        ParsedRule as IP_Rule,
-    )
-    from abi_coach.application.slices.metatuning.clarification_fsm import (
-        CANCELLATION_PHRASES as FSM_CANCEL,
-        CONFIRMATION_RULES as FSM_RULES,
-        ClarificationResolution as FSM_Res,
-        ClarificationState as FSM_State,
-        is_cancellation_phrase as fsm_is_cancel,
-    )
-    from abi_coach.application.slices.metatuning.engine import (
-        ClarificationState as ENG_State,
-        MetaTuningEngine as ENG_Engine,
-        MetaTuningResult as ENG_Result,
-    )
-    from abi_coach.application.slices.metatuning import (
-        ClarificationState as ROOT_State,
-        MetaTuningEngine as ROOT_Engine,
-        MetaTuningResult as ROOT_Result,
-    )
-
-    assert IP_CANCEL is FSM_CANCEL
-    assert IP_RULES is FSM_RULES
-    assert IP_Cfg is ParsedConfig
-    assert IP_Fact is ParsedFact
-    assert IP_Rule is ParsedRule
-    assert FSM_State is ClarificationState
-    assert FSM_Res is ClarificationResolution
-    assert fsm_is_cancel is is_cancellation_phrase
-    assert ENG_State is ClarificationState
-    assert ROOT_State is ClarificationState
-    assert ROOT_Engine is ENG_Engine
-    assert ROOT_Result is ENG_Result

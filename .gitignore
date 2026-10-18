@@ -24,3 +24,5 @@ logs/
 *.jsonl
 .atl/
 .agents/
+
+scratch/
