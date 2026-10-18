@@ -125,5 +125,19 @@ Para garantizar legibilidad, bajo costo cognitivo, facilidad de navegación en I
 * **Erradicación del Import Clumping**: Los tests deben importar sus dependencias directamente desde el módulo origen de verdad, nunca a través de fachadas delegadoras ni re-exportaciones convenientes.
 * **Enfoque en Comportamiento Observable**: Eliminar pruebas triviales que solo verifiquen asignaciones de atributos en constructores o llamadas a mocks sin valor semántico. Las pruebas deben validar contratos, transiciones de estado y respuestas ante fallos.
 
+### 7. Dominio Puro y Segregación de Constantes, Enums y Records
+* **Prohibido el Amontonamiento de Constantes**: Queda terminantemente prohibido definir tuplas, listas de palabras clave, diccionarios de configuración o constantes de negocio dentro de clases de lógica o archivos de aplicación.
+* **Tipado Estricto con Enums y Records**:
+  - Todo conjunto discreto de intenciones, categorías, estados, eventos o modos debe modelarse como un **Enum** (`StrEnum` / `Enum`) en `src/abi_coach/domain/enums/`.
+  - Toda estructura de datos de intercambio, resolución o parsing debe modelarse como un **Record inmutable** (`@dataclass(frozen=True)`) en `src/abi_coach/domain/entities/`.
+* **Cero Duplicación de Reglas de Negocio**: Constantes globales (ej. frases de cancelación, tablas de resolución de clarificaciones, mapeo de voces) deben residir en un único archivo de verdad en `domain/` y ser consumidas por inyección o importación directa.
+
+### 8. Erradicación de Superclases, Fuga de UI y Compresión Artificial de Código
+* **Prohibición de Superclases Multipropósito**: Una clase jamás debe acumular lógica de parsing, persistencia, manejo de concurrencia y formateo. Si una clase requiere más de una responsabilidad, debe dividirse en servicios atómicos colaborativos.
+* **Prohibición de Compresión de Código (*Code Packing*)**:
+  - Queda estrictamente prohibido usar punto y coma (`;`) para encadenar sentencias o atributos en una sola línea, o comprimir bloques `if`/`with` en la misma línea para burlar los guardrails de LOC.
+  - La reducción de líneas se logra **extrayendo legítimamente clases, registros y funciones a sus propios archivos**, respetando el espaciado limpio y las convenciones de PEP 8.
+* **Aislamiento de Presentación y UI**: Ningún archivo en `application/` debe concatenar ni interpolar cadenas HTML o CSS directamente. El renderizado visual es responsabilidad exclusiva de plantillas externas (`resources/templates/`) o presentadores dedicados en la capa de infraestructura/presentación.
+
 
 
