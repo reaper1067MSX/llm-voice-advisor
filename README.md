@@ -1,284 +1,183 @@
-# 🎙️ LLM Voice Advisor - Real-Time AI Gaming Co-pilot
+# 🎙️ LLM Voice Advisor — Real-Time AI Gaming Copilot
 
-Un asistente táctico y copiloto por voz con Inteligencia Artificial multimodal para PC en tiempo real. Diseñado para gamers que buscan optimizar su juego, economía y estrategia sin apartar las manos del teclado ni tapar la pantalla del juego.
+> Copiloto táctico multimodal con Inteligencia Artificial que **escucha**, **observa**, **habla** y despliega **dashboards en tu segundo monitor** en tiempo real sin apartar las manos del teclado ni perder FPS en tu juego.
 
-Cuenta con detección de voz manos libres (**Voice Activity Detection / VAD**), transcripción local ultrarrápida en GPU (**Whisper**), síntesis de voz femenina natural (**TTS**), inferencia visual inteligente y **dashboards tácticos interactivos** (tablas estilizadas y gráficos Chart.js) que se despliegan automáticamente en tu segundo monitor.
-
-> 🎮 **Juego pre-configurado de muestra:** Incluye preset completo para *Arena Breakout: Infinite (PC)* (reglas económicas, comparador de penetración de blindaje, precios de mercado y análisis de alijo). Es **fácilmente adaptable a cualquier otro juego** (*Once Human*, *Escape from Tarkov*, *Rust*, *DayZ*, *PUBG*, etc.).
-
----
-
-## 🛑 Antes de empezar: Preguntas Frecuentes para No Desarrolladores
-
-Para que cualquier persona pueda usar este proyecto sin complicaciones técnicas:
-
-| Pregunta | Respuesta sencilla |
-| :--- | :--- |
-| **¿Tengo que instalar Python a mano?** | **NO.** Si no tienes Python, el script `instalar_dependencias.bat` o `game_advisor.bat` lo descarga y configura automáticamente de forma 100% aislada. |
-| **¿Tengo que instalar UV a mano?** | **NO.** Al hacer doble clic en `instalar_dependencias.bat` o `game_advisor.bat`, el sistema detecta si lo tienes; si no, lo instala automáticamente en 5 segundos. |
-| **¿Qué drivers de NVIDIA necesito?** | Simplemente tener los **drivers normales de tu tarjeta gráfica NVIDIA actualizados** (los Game Ready Drivers que actualizas desde la app de [NVIDIA GeForce Experience](https://www.nvidia.com/es-la/geforce/geforce-experience/) o [NVIDIA App](https://www.nvidia.com/es-la/software/nvidia-app/)). **NO** necesitas instalar CUDA Toolkit, ni C++, ni Visual Studio. |
-| **¿Y si mi PC tiene tarjeta gráfica AMD, Intel o no tiene NVIDIA?** | **Funciona igual.** Si el programa no detecta una tarjeta NVIDIA compatible, se activa automáticamente el modo CPU de Whisper sin dar errores. |
-| **¿Qué pasa si solo tengo Microsoft Edge instalado?** | **Funciona directamente.** El programa busca primero Firefox, y si no lo tienes, usa de forma nativa el **Microsoft Edge** que ya viene preinstalado en Windows 10 y 11. |
-| **¿Puedo usarlo mientras hablo por Discord?** | **SÍ.** Windows permite que varias aplicaciones escuchen tu micrófono al mismo tiempo. Puedes estar en llamada con tu escuadrón y tu copiloto te escuchará en paralelo sin interferencias. |
-| **¿Cobra dinero la clave de Google Gemini?** | **NO.** El plan gratuito (*Free Tier*) de Google AI Studio ofrece hasta 15 consultas por minuto y 1.000.000 de tokens por minuto **sin solicitar tarjeta de crédito** ($0.00 USD). |
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Architecture: Clean](https://img.shields.io/badge/architecture-Clean%20%2F%20Hexagonal-emerald.svg)](CAPABILITIES.md)
+[![Tests Passing](https://img.shields.io/badge/tests-172%20passed-brightgreen.svg)](tests/)
 
 ---
 
-## 🐍 Instalación de Python (2 Opciones: Automática o Manual)
+## ⚡ Inicio Rápido (Gamers / Zero Coding)
 
-Para ejecutar el copiloto necesitas el lenguaje Python (versión 3.12 recomendada). Tienes dos formas muy sencillas de tenerlo:
+No necesitas conocimientos de programación ni instalar herramientas complejas por tu cuenta.
 
-### Opción A (Recomendada): Automática con 1 Clic (Sin páginas web ni configuraciones)
-No necesitas hacer nada previo.
-1. Ejecuta el archivo **`instalar_dependencias.bat`** (haciendo doble clic).
-2. El instalador descargará un entorno de Python 3.12 totalmente aislado y de alto rendimiento utilizando `uv` (un gestor ultra rápido de Python).
-3. **Ventajas:** No altera el registro de Windows, no ensucia tus variables de entorno y no entra en conflicto con ningún otro programa que tengas en tu computadora.
+### 🚀 Opciones de Lanzamiento en 1 Clic
 
-### Opción B: Instalación Manual Tradicional desde python.org
-Si prefieres instalar Python en tu sistema por tu cuenta:
-1. Ve a la página oficial de descargas: **[https://www.python.org/downloads/](https://www.python.org/downloads/)**
-2. Descarga la versión **Python 3.12** (Windows Installer de 64 bits).
-3. Ejecuta el instalador descargado.
-4. ⚠️ **PASO MUY IMPORTANTE:** En la primerísima pantalla del instalador, **marca la casilla que dice:**
-   ```text
-   [X] Add python.exe to PATH
-   ```
-   *(Si olvidas marcar esa casilla, Windows no reconocerá el comando `python` en tu consola).*
-5. Haz clic en **Install Now** y espera a que termine.
-6. Para comprobar que quedó bien instalado, abre PowerShell o la Consola de Windows (`cmd`) y escribe:
-   ```powershell
-   python --version
-   ```
-   Debe responder `Python 3.12.x`.
+| Método | Para quién es | Cómo iniciarlo | Qué hace el sistema |
+| :--- | :--- | :--- | :--- |
+| **Lanzador 1-Clic** *(Recomendado)* | Usuarios de repositorio / portable | Doble clic en `game_advisor.bat` | Instala `uv` en 5s, configura Python 3.12 aislado, solicita tu clave si falta y arranca el copiloto. |
+| **Instalador de Windows** | Instalación formal en Windows | Ejecuta `dist/installer/CompanionAdvisor-Installer-v0.2.2.exe` | Asistente profesional Inno Setup en `C:\CompanionAdvisor`, con accesos directos y desinstalador limpio. |
+| **Apagado en 1-Clic** | Fin de partida | Doble clic en `detener.bat` | Cierra todos los procesos, libera hilos de audio, micrófono y vacía la memoria VRAM de la GPU. |
 
 ---
 
-## 📦 Dependencias de Terceros y Manejador de Paquetes en 1 Comando
+### 🕹️ 3 Pasos para Jugar
 
-### ¿Qué librerías de terceros utiliza este proyecto?
-El copiloto integra componentes especializados para garantizar latencia casi nula y alta fidelidad:
+1. **Inicia el asistente:** Haz doble clic en **`game_advisor.bat`**.
+2. **Ingresa tu clave:** Pega tu clave gratuita de Google Gemini (o Moonshot Kimi) en la ventana cuando te la pida (solo la primera vez).
+3. **Entra a tu partida:** Configura tu juego en **Ventana sin bordes** (*Borderless Windowed*), habla con naturalidad por tu micrófono y ¡recibe consejos tácticos al instante!
 
-* **`faster-whisper` + `ctranslate2`:** Motor de Inteligencia Artificial que transcribe lo que dices por el micrófono en milisegundos directamente en los núcleos Tensor de tu tarjeta gráfica.
-* **`nvidia-cublas-cu12` + `nvidia-cudnn-cu12`:** Bibliotecas de aceleración de NVIDIA precompiladas. Permiten que la GPU procese el audio al instante **sin** necesidad de instalar el pesado SDK de NVIDIA CUDA Toolkit ni Microsoft Visual Studio.
-* **`edge-tts`:** Síntesis de voz neural de alta calidad de Microsoft. Genera respuestas habladas con voces humanas hiperrealistas de forma gratuita y sin consumir cuota de tu API.
-* **`sounddevice` + `numpy`:** Captura de audio en tiempo real desde tu micrófono con buffer circular de baja latencia.
-* **`dxcam` y `mss`:** Motores de captura de pantalla ultra rápidos (utilizan la API de duplicación de escritorio de Windows DirectX) para capturar el juego sin reducir tus FPS.
-* **`google-genai`:** SDK oficial de Google para conectar con los modelos de visión y razonamiento multimodal de Gemini.
-* **`pillow`:** Algoritmo de escalado Lanczos de alta fidelidad para comprimir las capturas antes de enviarlas al modelo.
-* **`pynput`:** Monitorización del teclado para el modo Push-to-Talk (tecla F9 por defecto).
+---
 
-### ⚡ ¿Cómo instalar todas las dependencias con 1 solo comando?
+## 🔑 Configuración de Claves de API
 
-**¡NO tienes que instalar las dependencias una por una!** El proyecto cuenta con un manejador de paquetes automatizado y un archivo de bloqueo (`uv.lock`) que asegura que todo se instale exactamente en las versiones correctas.
+El copiloto utiliza modelos multimodales de última generación. Puedes usar Google Gemini de forma gratuita o configurar Moonshot (Kimi) como respaldo resiliente de alta capacidad:
 
-#### Método 1 (Con interfaz / 1 Clic):
-Haz doble clic en:
-```text
-👉 instalar_dependencias.bat
+| Proveedor | Modelo Principal | Costo | Cómo Obtenerla | Variable en `.env` |
+| :--- | :--- | :--- | :--- | :--- |
+| **Google Gemini** *(Recomendado)* | `gemini-3.5-flash` / `gemini-3.1-flash-lite` | **100% Gratuito** ($0.00 USD, sin tarjeta de crédito) | 1. Entra a [Google AI Studio](https://aistudio.google.com)<br>2. Clic en **Get API Key** ➔ **Create API Key**<br>3. Copia tu clave `AIzaSy...` | `GEMINI_API_KEY=AIzaSy...` |
+| **Moonshot (Kimi)** *(Respaldo Resiliente)* | `kimi-k2.6` | Pay-as-you-go / créditos iniciales | 1. Entra a [Moonshot AI Platform](https://platform.moonshot.ai) o [Moonshot CN](https://platform.moonshot.cn)<br>2. Genera una API Key en la consola | `MOONSHOT_API_KEY=sk-...`<br>`MOONSHOT_BASE_URL=https://api.moonshot.ai/v1` |
+| **NVIDIA NIM** *(Opcional)* | `meta/llama-3.2-11b-vision-instruct` | Free Tier en catálogo de NVIDIA | 1. Entra a [build.nvidia.com](https://build.nvidia.com)<br>2. Genera tu Personal API Key | `NVIDIA_API_KEY=nvapi-...` |
+
+### Plantilla de Configuración (`.env`)
+Si prefieres editar el archivo directamente, crea o edita `.env` en la raíz del proyecto:
+```env
+# Proveedor principal (Gratis en Google AI Studio)
+GEMINI_API_KEY=AIzaSyTuClaveDeGoogleGeminiAqui
+
+# Proveedor de respaldo automático (Kimi / Moonshot)
+MOONSHOT_API_KEY=sk-TuClaveDeMoonshotAqui
+MOONSHOT_BASE_URL=https://api.moonshot.ai/v1
+MOONSHOT_MODEL=kimi-k2.6
 ```
-*El instalador verificará uv, instalará Python 3.12, descargará todas las librerías necesarias y te ayudará a colocar tu clave de Gemini.*
-
-#### Método 2 (Por consola / 1 solo comando):
-Si estás usando PowerShell o CMD dentro de la carpeta del proyecto:
-```powershell
-uv sync
-```
-*(Si usas Python tradicional instalado en el sistema, puedes ejecutar `pip install -e .`).*
 
 ---
 
-## 🔑 Obtener tu Clave Gratuita de Google Gemini (Free Tier)
+## 🎮 Experiencia en Partida y Controles
 
-Para que el copiloto pueda razonar tus preguntas y ver tu pantalla, utiliza la inteligencia artificial de Google Gemini en su nivel gratuito ($0.00 USD).
+### ⌨️ Tabla de Teclas Rápidas (Hotkeys)
 
-1. Abre tu navegador e ingresa a: **[https://aistudio.google.com](https://aistudio.google.com)**
-2. Inicia sesión con cualquier cuenta de Google normal (tu correo `@gmail.com`).
-3. En la esquina superior izquierda o central, haz clic en el botón azul **"Get API key"** (o "Crear clave de API").
-4. Haz clic en **"Create API key in new project"** (Crear clave de API en un nuevo proyecto).
-5. Aparecerá en pantalla una clave larga que empieza con `AIzaSy...`. Haz clic en **Copy** (Copiar).
-6. Pega esta clave en el archivo `.env` del proyecto:
-   ```env
-   GEMINI_API_KEY=AIzaSyTuClaveDeGoogleGeminiAqui
-   ```
-   *(Si usas `game_advisor.bat` o `instalar_dependencias.bat`, la ventana te la pedirá directamente y la guardará por ti).*
+| Tecla | Acción | Comportamiento | Retroalimentación |
+| :---: | :--- | :--- | :--- |
+| **`F10`** | **Mute Toggle (Silencio Global)** | Alterna entre silenciar y reactivar el micrófono en cualquier momento (ideal si hablas por Discord). | Beep sonoro de Windows (`winsound` tono alto / bajo). |
+| **`F9`** | **Push-To-Talk (PTT)** | Si activas modo PTT en `config.yaml`, mantén presionada esta tecla mientras formulas tu consulta. | Escucha únicamente mientras está presionada. |
+| **`Ctrl + C`** | **Salida de Consola** | Cierra la sesión del asistente liberando hilos de fondo y memoria gráfica. | Mensaje de confirmación en consola. |
 
 ---
 
-## 🚀 Inicio Rápido con 1 Clic
+### 🗣️ Comandos de Voz Naturales (Meta-Tuning en Vivo)
 
-El proyecto incluye el lanzador principal **`game_advisor.bat`**:
+No requieres memorizar comandos rígidos ni sintaxis de consola. Habla de forma natural durante la partida para afinar el comportamiento del copiloto:
 
-* **🎮 Copiloto Multijuego General:** Haz doble clic en **`game_advisor.bat`**  
-  *Inyecta el prompt de Asesor Universal: visión en vivo de HUD, análisis de interfaz, loot, inventario y dashboards para cualquier videojuego.*
-* **🎯 Copiloto Especializado para Arena Breakout Infinite:** Ejecuta `game_advisor.bat --game abi` (o cámbialo en `config.yaml`).  
-  *Inyecta el prompt militar y económico de ABI: balística de S7, penetración de blindaje por calibre, valor por casilla y alijo.*
-
-Cuando veas en la consola:
-```text
-🎙️ [MODO CONTINUO VAD ACTIVO] Escuchando tu micrófono...
-```
-¡Ya puedes entrar a tu partida y hablarle con total naturalidad!
-
-### 🛑 ¿Cómo detener el asistente? (1 solo script unificado)
-Para apagar cualquier copiloto al terminar de jugar y liberar inmediatamente la memoria GPU (VRAM), hilos de audio y el stream de micrófono, simplemente haz doble clic en:
-```text
-👉 detener.bat
-```
-*(O presiona `Ctrl+C` en la ventana de la consola).*
+| Lo que dices al micrófono | Acción del Copiloto | Resultado en Tiempo Real |
+| :--- | :--- | :--- |
+| *"Coach, prioriza daño"* | **Meta-Tuning Balístico** | Ajusta el razonamiento táctico para priorizar penetración de blindaje y daño letal. |
+| *"Filtra solo loot morado o dorado"* | **Filtro de Inventario** | Ignora objetos de bajo valor (tier 1-3) y alerta solo sobre ítems de alto valor. |
+| *"Prioriza valor por casilla"* | **Economía de Alijo** | Evalúa koen/rublos por ranura de inventario para decidir qué loot conservar. |
+| *"Cambia a Rust"* *(o "Modo Tarkov", "Modo Once Human")* | **Scaffolding de Arquetipo** | Activa dinámicamente el arquetipo de *Survival Crafting* o *Extraction Shooter* con sus reglas y datos. |
+| *"Cambia la voz a Elvira"* *(o Salomé, Dalia, Camila)* | **Voz en Caliente** | Modifica instantáneamente la voz neural de Microsoft en `config.yaml` sin reiniciar. |
+| *"Cancela"* o *"Olvídalo"* | **FSM de Clarificación** | Cancela una aclaración pendiente o restablece el estado de diálogo. |
 
 ---
 
-## 🕹️ Guía Completa de Comandos CLI (Referencia Exhaustiva)
+### 🖥️ Dashboards Tácticos en Segundo Monitor (Sin Perder el Foco)
 
-Además de los archivos `.bat`, el proyecto cuenta con una potente Interfaz de Línea de Comandos (CLI) que te permite alternar juegos, realizar diagnósticos, probar componentes individuales y hacer consultas sin micrófono.
+* **Visión en vivo:** El motor DirectX captura fotogramas de tu pantalla sin mermar los FPS de tu juego.
+* **Auto-despliegue en DISPLAY2:** Al formular preguntas comparativas (ej: *"¿Qué munición penetra mejor clase 5?"* o *"Analiza el valor de mi alijo"*), el copiloto genera un reporte interactivo en HTML5 con **Chart.js**.
+* **Zero Focus Stealing:** Utiliza la API Win32 de Windows (`win32_window_manager.py`) para posicionar y maximizar el navegador en tu pantalla secundaria **sin robar el foco del teclado/ratón de tu juego ni hacer parpadear la barra de tareas**.
 
-Puedes invocar los comandos usando `uv run game-advisor <comando>` (o `uv run python -m abi_coach <comando>`):
+---
 
-| Comando / Parámetro | Acción y Utilidad | ¿Consume Tokens de Gemini? |
+## 💻 Referencia de Comandos CLI
+
+Para usuarios avanzados, streamers y desarrolladores, puedes ejecutar diagnósticos e invocar el copiloto mediante `uv run game-advisor` (o `uv run python -m abi_coach`):
+
+| Comando | Propósito | ¿Consume Cuota de API? |
 | :--- | :--- | :---: |
-| *(sin parámetros)* | **Modo Principal:** Inicia el bucle continuo del copiloto en tiempo real (VAD manos libres o PTT). | Solo al preguntar |
-| `--game <abi\|generic>` | **Inyector de Prompt de Juego:** Alterna entre `'abi'` (Arena Breakout) o `'generic'` (Multijuego universal). | Solo al preguntar |
-| `--test-mic` | **Prueba de Micrófono:** Graba 3 segundos de tu voz, la procesa en GPU con Whisper y muestra la transcripción. | ❌ NO (100% local) |
-| `--test-tts "<texto>"` | **Prueba de Voz:** Reproduce por tus audífonos el texto indicado usando el motor neural para verificar volumen y entonación. | ❌ NO (Gratis) |
-| `--list-voices` | **Catálogo de Voces:** Lista todas las voces femeninas en español disponibles con sus IDs, países y descripciones. | ❌ NO |
-| `--voice <id>` | **Selector de Voz Temporal:** Permite probar una voz específica junto con `--test-tts` sin tocar `config.yaml`. | ❌ NO |
-| `--test-capture` | **Prueba de Captura:** Captura tu monitor de juego, mide los milisegundos que tarda DirectX y el peso de la imagen. | ❌ NO |
-| `--ask "<pregunta>"` | **Consulta Silenciosa:** Envía una pregunta por texto + captura en vivo de tu juego sin activar el micrófono. | SÍ (1 consulta) |
-| `--list-models` | **Listar Modelos Gemini:** Consulta a Google AI Studio y muestra todos los modelos disponibles para tu clave. | ❌ NO |
-| `--config <archivo.yaml>` | **Configuración Alternativa:** Permite cargar un archivo `.yaml` distinto (ideal para alternar entre diferentes juegos). | Depende del uso |
-| `-h`, `--help` | **Ayuda:** Muestra el manual de ayuda de la consola en pantalla. | ❌ NO |
+| `uv run game-advisor` | **Modo Principal:** Inicia el bucle continuo en tiempo real (VAD manos libres o PTT). | Solo al preguntar |
+| `uv run game-advisor --game abi` | **Preset ABI:** Inicia con contexto especializado para Arena Breakout: Infinite. | Solo al preguntar |
+| `uv run game-advisor --test-mic` | **Diagnóstico de Micrófono:** Graba 3s y valida transcripción en GPU con Whisper. | ❌ NO (100% local) |
+| `uv run game-advisor --test-tts "<texto>"` | **Prueba de Voz:** Reproduce una frase por tus auriculares con síntesis neural Edge-TTS. | ❌ NO (Gratuito) |
+| `uv run game-advisor --list-voices` | **Catálogo de Voces:** Lista las voces femeninas en español disponibles con sus IDs. | ❌ NO |
+| `uv run game-advisor --voice <id>` | **Selector Temporal:** Prueba una voz específica (ej: `es-ES-ElviraNeural`). | ❌ NO |
+| `uv run game-advisor --test-capture` | **Diagnóstico de Captura:** Mide milisegundos de captura DirectX y escalado Lanczos. | ❌ NO |
+| `uv run game-advisor --ask "<pregunta>"` | **Consulta Silenciosa:** Envía una pregunta por texto junto con captura de pantalla. | SÍ (1 consulta) |
+| `uv run game-advisor --list-models` | **Descubrimiento de Modelos:** Consulta dinámicamente endpoints activos en Gemini y Moonshot. | ❌ NO |
 
 ---
 
-### 📖 Ejemplos Prácticos de Cada Comando
+## 🏛️ Arquitectura y Referencia Técnica
 
-#### 1. Probar que tu micrófono y Whisper en GPU funcionen bien:
-```powershell
-uv run llm-voice-advisor --test-mic
-```
-*Salida esperada:*
+El proyecto implementa **Clean Architecture (Hexagonal)** con separación estricta de responsabilidades en 4 capas concéntricas:
+
 ```text
-🎙️ Inicializando motor Whisper en GPU...
-Habla ahora durante 3 segundos...
-Procesando y transcribiendo...
-✅ Transcripción exitosa: "hola probando micrófono para el copiloto"
+src/abi_coach/
+├── domain/                  # Entidades puras, Records inmutables, Enums y Puertos
+│   ├── common/              # Result, Option, Value Objects de error
+│   ├── entities/            # PlayerMemory, KnowledgeItem, MetatuningRecords, DTOs
+│   ├── enums/               # MetaTuningIntent, MetaTuningCategory, MetaTuningAction
+│   └── ports/               # WindowManagerPort, LLMPort, AudioPort, StoragePort
+├── application/             # Casos de uso y orquestación de aplicación
+│   ├── orchestration/       # AdvisorOrchestrator, ResilientLLMOrchestrator
+│   ├── services/            # ModelDiscoveryService, ConfigMutator, AudioFeedback
+│   └── slices/              # Metatuning FSM, Tactical RAG, Archetypes, Reporting
+├── infrastructure/          # Adaptadores de plataforma e implementaciones de puertos
+│   ├── adapters/            # DXCam/MSS (visión), Faster-Whisper/Silero (audio), Gemini/Moonshot (LLM)
+│   ├── platform/            # Win32WindowManager (ctypes User32), BrowserLauncher, Hotkeys
+│   ├── presentation/        # DashboardPresenter para renderizado HTML/CSS/Chart.js
+│   └── resources/           # Plantillas HTML para reportes tácticos
+└── presentation/            # Puntos de entrada para usuario y presentación
+    ├── cli/                 # CLI entrypoints (game-advisor, llm-voice-advisor, abi-coach)
+    └── voice/               # Bucle continuo de interacción por voz en tiempo real
 ```
 
-#### 2. Probar la voz del asistente por tus audífonos:
-```powershell
-uv run llm-voice-advisor --test-tts "¡Atención! Munición enemiga nivel 5 detectada en el objetivo."
-```
-
-#### 3. Ver qué voces hay disponibles y probar una con acento de España:
-```powershell
-uv run llm-voice-advisor --list-voices
-uv run llm-voice-advisor --test-tts "Hola, soy Elvira y seré tu copiloto táctico." --voice es-ES-ElviraNeural
-```
-
-#### 4. Probar la captura de pantalla sin bajar rendimiento del juego:
-```powershell
-uv run llm-voice-advisor --test-capture
-```
-*Salida esperada:*
-```text
-📸 Tomando captura del monitor configurado...
-✅ Captura exitosa:
-  • Tamaño original: 2560x1440
-  • Tamaño procesado (Lanczos): 1280x720
-  • Peso JPEG comprimido: 142.3 KB
-  • Tiempo de captura de SO: 12.4 ms
-  • Tiempo total: 24.8 ms
-```
-
-#### 5. Hacer una pregunta mediante texto con análisis de tu pantalla en vivo:
-*(Ideal si estás jugando de noche y no quieres hacer ruido con el micrófono)*
-```powershell
-uv run llm-voice-advisor --ask "¿Cuál de las armas que tengo en el inventario tiene mejor penetración?"
-```
-
-#### 6. Comprobar qué modelos de Google Gemini tienes habilitados:
-```powershell
-uv run llm-voice-advisor --list-models
-```
+### 📘 Documentación Arquitectónica Exhaustiva
+Para profundizar en los 7 pilares técnicos del sistema, RAG determinístico en sub-3ms con SQLite FTS5, circuito de contingencia ante caídas de API y el motor de arquetipos dinámicos:
+👉 Consulta la **[`CAPABILITIES.md`](CAPABILITIES.md)**.
 
 ---
 
-## 🎮 ¿Cómo interactuar con el Copiloto mientras juegas?
+## 🧪 Verificación de Calidad y Tests
 
-1. **Ajuste en tu juego (Importante):**  
-   Configura tu juego en modo **Ventana sin bordes** (*Borderless Windowed*). Esto permite que Windows capture fotogramas limpiamente sin interferir con el juego ni activar alertas de anti-cheat.
-2. **Haz tus preguntas por el micrófono:**
-   * **Modo Manos Libres (Por defecto):** Habla con naturalidad en cualquier momento (ej: *"¿Qué balas me recomiendas para farmear?"* o *"Mira mi pantalla, ¿vale la pena este loot?"*). El copiloto detectará tu voz, analizará la situación y te responderá hablando directamente a tus auriculares.
-   * **Modo Push-to-Talk (Opcional):** Si prefieres presionar una tecla para hablar, mantén presionado **`F9`** mientras formulas tu pregunta.
-3. **Tablas y Gráficos en tu Segundo Monitor:**
-   * Si tienes dos pantallas, mantén el juego en la pantalla principal (DISPLAY1) y tu pantalla secundaria (DISPLAY2) visible.
-   * Cada vez que tu consulta involucre números, comparativas de daño de munición o valor de objetos, el copiloto generará un dashboard interactivo en HTML con **Chart.js** y lo **abrirá y maximizará automáticamente en tu segundo monitor** sin desviar el foco de tu juego ni hacer parpadear la barra de tareas.
-4. **Para apagar el copiloto al terminar:**
-   * Haz doble clic en **`detener.bat`** o presiona `Ctrl+C` en la consola. Todos los procesos de audio, GPU y micrófono se cerrarán inmediatamente sin dejar procesos colgados.
+El proyecto cuenta con suite de pruebas automatizadas y control estricto de fronteras arquitectónicas:
 
----
+```powershell
+# 1. Ejecutar la suite completa de pruebas unitarias e integración (170+ tests)
+uv run pytest -q
 
-## 🖥️ Requisitos de Sistema Detallados
+# 2. Verificar que ninguna capa interna importe capas externas (Clean Architecture)
+uv run lint-imports
 
-### Requisitos Mínimos:
-* **Sistema Operativo:** Windows 10 o Windows 11 (64-bit).
-* **Procesador (CPU):** Intel Core i5 / AMD Ryzen 5 o superior.
-* **Memoria RAM:** 8 GB (16 GB recomendado si juegas títulos pesados).
-* **Micrófono:** Cualquier micrófono USB, headset o de escritorio (compatible con Corsair, HyperX, Logitech, Razer, etc.).
-* **Navegador Web:** Mozilla Firefox, Microsoft Edge (nativo) o Google Chrome.
-* **Conexión a Internet:** Para conectarse a la API de Gemini.
-
-### Requisitos Recomendados (Máxima Velocidad y Cero Latencia):
-* **Tarjeta Gráfica (GPU):** NVIDIA GeForce RTX serie 30 o 40 (RTX 3060, 4060, 4070 Ti, 4080, etc.) con los últimos [Game Ready Drivers de NVIDIA](https://www.nvidia.com/Download/index.aspx). Ejecuta el modelo Whisper `large-v3-turbo` en `float16` con transcripción instantánea en GPU.
-* **Monitores:** Configuración dual:
-  * **Monitor 1 (Principal):** 1440p o 1080p para el videojuego.
-  * **Monitor 2 (Secundario):** 1080p para visualizar las tablas tácticas y gráficos interactivos.
+# 3. Validar estilo de código, imports y convenciones con Ruff
+uv run ruff check
+```
 
 ---
 
 ## 🛡️ Seguridad Anti-Cheat (ACE, Vanguard, Easy Anti-Cheat)
 
-* **100% externo al juego:** Opera exclusivamente a nivel de escritorio de Windows mediante la API estándar de duplicación de escritorio (Windows Desktop GDI / Desktop Duplication).
-* **Cero inyección:** No inyecta DLLs, no lee la memoria RAM del juego (`.exe`), ni dibuja overlays invasivos sobre la ventana del juego. Funciona exactamente de la misma manera que Discord al compartir pantalla o NVIDIA ShadowPlay al grabar.
+* **100% Externo al juego:** Opera exclusivamente a nivel de escritorio mediante la API de duplicación de escritorio de Windows (DirectX Desktop Duplication / GDI).
+* **Cero inyección:** No inyecta DLLs, no lee ni modifica la memoria RAM del juego (`.exe`), ni dibuja overlays invasivos sobre la ventana.
+* **Mismo nivel de seguridad que OBS o Discord:** Funciona de la misma manera que Discord al compartir pantalla o NVIDIA ShadowPlay al grabar tus partidas.
 
 ---
 
-## 🔀 ¿Cómo adaptar o hacer Fork de este proyecto para otro juego?
+## 📋 Requisitos del Sistema
 
-El proyecto está diseñado de forma modular para que puedas crear tu propio copiloto para cualquier juego:
-
-1. **Cambiar la personalidad y reglas del juego (`src/abi_coach/brain.py`):**
-   * Edita `COACH_SYSTEM_INSTRUCTION` y describe las mecánicas de tu juego objetivo (ej. calibración de armas en *Once Human*, balística y blindajes en *Tarkov*, rutas en *DayZ* o builds en *Path of Exile*).
-2. **Definir zonas de recorte de pantalla (`config.yaml`):**
-   * En `capture.regions`, puedes definir coordenadas en píxeles para que la IA recorte con zoom el inventario, minimapa o barra de salud de tu juego a resolución nativa.
-3. **Personalizar las tablas y gráficas (`src/abi_coach/reports.py`):**
-   * Modifica las plantillas HTML y los colores de Chart.js para que combinen con la temática visual de tu juego.
-
----
-
-## ⚙️ Personalización de Ajustes (`config.yaml`)
-
-Si deseas personalizar teclas, micrófonos o voces, abre `config.yaml` con el Bloc de notas:
-
-```yaml
-listener:
-  mode: "continuous"        # "continuous" (manos libres), "ptt" (pulsar tecla) o "hybrid"
-  ptt_key: "f9"             # Tecla para hablar si usas PTT
-  vad_threshold: 0.012      # Sensibilidad del micro (0.010 a 0.020)
-  silence_duration_sec: 1.0 # Segundos de silencio para enviar tu pregunta
-
-speaker:
-  voice: "es-CO-SalomeNeural" # Voz de Salomé (Colombia). Otras: es-ES-ElviraNeural, es-MX-DaliaNeural
-  rate: "+0%"                 # Velocidad de voz
-  volume: "+0%"
-
-reports:
-  auto_open_browser: true
-  preferred_browser: "firefox" # "firefox", "edge" o "chrome"
-```
+| Componente | Mínimo | Recomendado (Máximo Rendimiento) |
+| :--- | :--- | :--- |
+| **Sistema Operativo** | Windows 10 (64-bit) | Windows 11 (64-bit) |
+| **Procesador (CPU)** | Intel Core i5 / AMD Ryzen 5 | Intel Core i7 / AMD Ryzen 7 o superior |
+| **Memoria RAM** | 8 GB | 16 GB o más |
+| **Tarjeta Gráfica (GPU)** | Gráficos integrados o GPU compatible con CPU fallback | NVIDIA GeForce RTX serie 30 o 40 (Whisper `large-v3-turbo` en `float16` con núcleos Tensor) |
+| **Micrófono** | Cualquier micrófono USB, headset o de escritorio | Headset con cancelación de ruido o micrófono dedicado |
+| **Monitores** | 1 Monitor (Juego + Ventana de asistente) | **2 Monitores:** Display 1 (Juego 1440p/1080p) + Display 2 (Dashboards tácticos) |
+| **Navegador** | Microsoft Edge (preinstalado en Windows) | Mozilla Firefox (ultraligero y rápido) o Google Chrome |
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está bajo la licencia **MIT**. Eres libre de usarlo, modificarlo, compartirlo y adaptarlo a cualquier videojuego.
+Este proyecto está bajo la licencia **MIT**. Eres libre de usarlo, adaptarlo a cualquier juego, modificarlo y compartirlo con tu comunidad.
