@@ -20,6 +20,8 @@ from abi_coach.domain.common import (
 )
 from abi_coach.domain.entities import (
     GameContext,
+    KnowledgeDashboardItem,
+    MemoryDashboardItem,
     MetaTuningDirective,
     PlayerMemory,
     TacticalDiff,
@@ -64,6 +66,8 @@ __all__ = [
     "TacticalDiff",
     "TuningRule",
     "MetaTuningDirective",
+    "MemoryDashboardItem",
+    "KnowledgeDashboardItem",
     # Ports
     "LLMProviderPort",
     "LLMResponseDTO",

@@ -23,3 +23,6 @@ data/*.db
 logs/
 *.jsonl
 .atl/
+.agents/
+
+scratch/
