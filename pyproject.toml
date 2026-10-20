@@ -79,7 +79,7 @@ ignore_imports = [
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.config.settings",
     "abi_coach.application.pipeline.exception_middleware -> abi_coach.infrastructure.adapters.logging.structured_logger",
     "abi_coach.application.services.config_mutator -> abi_coach.infrastructure.config.settings",
-    "abi_coach.application.slices.archetypes.manager -> abi_coach.infrastructure.adapters.storage.db",
+    "abi_coach.application.slices.archetypes.manager -> abi_coach.infrastructure.adapters.storage.sqlite_archetype_repository",
     "abi_coach.application.slices.archetypes.scaffolder -> abi_coach.infrastructure.adapters.storage.db",
     "abi_coach.application.slices.companion_memory.memory -> abi_coach.infrastructure.adapters.storage.db",
     "abi_coach.application.slices.metatuning.engine -> abi_coach.infrastructure.adapters.storage.db",
