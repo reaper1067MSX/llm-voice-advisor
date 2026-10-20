@@ -72,7 +72,6 @@ layers = [
 ]
 # Excepciones históricas de instanciación por defecto (a eliminar en Etapas 4-5):
 ignore_imports = [
-    "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.llm.base",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.llm.factory",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.storage.db",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.storage.in_memory_blackboard",

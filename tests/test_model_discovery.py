@@ -1,5 +1,7 @@
 """Unit tests for Model Discovery Service, Moonshot Quota Failover, and Factory Injection."""
 
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -371,4 +373,111 @@ def test_model_discovery_full_discover():
         assert report.nvidia_available is True
         assert report.moonshot_model == "kimi-k2.6"
         assert report.has_any_provider() is True
+
+
+# ==============================================================================
+# 8. Regression Unit Tests for Remediation
+# ==============================================================================
+
+
+def test_regression_infrastructure_adapters_llm_direct_import():
+    """Verify that abi_coach.infrastructure.adapters.llm imports cleanly without cycles."""
+    proc = subprocess.run(
+        [sys.executable, "-c", "import abi_coach.infrastructure.adapters.llm; print('OK')"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, f"Import failed with stderr: {proc.stderr}"
+    assert "OK" in proc.stdout
+
+
+def test_regression_moonshot_response_content_none_handles_gracefully():
+    """Verify MoonshotAdapter handles content: None / null without raising AttributeError."""
+    adapter = MoonshotAdapter(api_key="test-key")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [{"message": {"content": None}}],
+        "usage": {"prompt_tokens": 12, "completion_tokens": 0},
+    }
+
+    with patch.object(adapter._client, "post", return_value=mock_resp):
+        res = adapter.generate(prompt="Tactical prompt", system_instruction="Coach")
+        assert res.is_ok()
+        dto = res.unwrap()
+        assert dto.spoken_text == ""
+        assert dto.provider_name == "moonshot"
+
+
+def test_regression_moonshot_response_200_non_json_returns_provider_error():
+    """Verify MoonshotAdapter maps HTTP 200 non-JSON text to MOONSHOT_INVALID_RESPONSE."""
+    adapter = MoonshotAdapter(api_key="test-key")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = "<html><body>Bad Gateway from Proxy</body></html>"
+    mock_resp.json.side_effect = ValueError("Invalid JSON")
+
+    with patch.object(adapter._client, "post", return_value=mock_resp):
+        res = adapter.generate(prompt="Tactical prompt", system_instruction="Coach")
+        assert res.is_err()
+        err = res.error
+        assert isinstance(err, ProviderError)
+        assert err.code == "MOONSHOT_INVALID_RESPONSE"
+        assert err.is_transient is True
+        assert err.retryable is True
+        assert err.provider_name == "moonshot"
+
+
+def test_regression_resilient_orchestrator_catches_unexpected_provider_exception():
+    """Verify ResilientLLMOrchestrator catches unexpected provider crashes and cascades."""
+    mock_crasher = MagicMock()
+    mock_crasher.generate.side_effect = RuntimeError("Low-level segmentation/driver crash")
+
+    mock_fallback = MagicMock()
+    mock_fallback.generate.return_value = ok(
+        LLMResponseDTO(
+            spoken_text="Recovered by fallback",
+            latency_ms=80.0,
+            provider_name="gemini-fallback",
+        )
+    )
+
+    failovers = []
+
+    def on_failover(failed_name: str, reason: str, next_name: str) -> None:
+        failovers.append((failed_name, reason, next_name))
+
+    orchestrator = ResilientLLMOrchestrator(
+        primary=("crasher", mock_crasher),
+        fallbacks=[("gemini-fallback", mock_fallback)],
+        failure_threshold=1,
+        on_failover=on_failover,
+    )
+
+    res = orchestrator.generate(prompt="Help", system_instruction="Coach")
+    assert res.is_ok()
+    assert res.unwrap().spoken_text == "Recovered by fallback"
+    assert len(failovers) == 1
+    assert failovers[0][0] == "crasher"
+    assert failovers[0][2] == "gemini-fallback"
+    assert orchestrator.breakers["crasher"].is_open is True
+
+
+def test_regression_factory_does_not_inject_undiscovered_phantom_lite_model():
+    """Verify factory does not inject undiscovered lite model when only primary is found."""
+    report = DiscoveredModelsReport(
+        gemini_models=["gemini-2.5-flash"],
+        moonshot_available=False,
+        nvidia_available=False,
+    )
+    config = AppConfig(
+        gemini=GeminiConfig(api_key="mock-key"),
+        resilience=ResilienceConfig(enabled=True),
+    )
+
+    adapter = create_llm_adapter(config, discovered_report=report)
+    assert isinstance(adapter, ResilientLLMOrchestrator)
+    assert adapter.primary_name == "gemini-2.5-flash"
+    fallback_names = [name for name, _ in adapter.fallbacks]
+    assert "gemini-3.1-flash-lite-preview" not in fallback_names
 

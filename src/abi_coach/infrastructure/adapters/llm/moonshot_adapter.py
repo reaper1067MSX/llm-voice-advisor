@@ -146,7 +146,20 @@ class MoonshotAdapter(LLMProviderPort):
                     )
                 )
 
-            data = resp.json()
+            try:
+                data = resp.json()
+            except (ValueError, KeyError, AttributeError):
+                return fail(
+                    ProviderError(
+                        code="MOONSHOT_INVALID_RESPONSE",
+                        message=f"Respuesta no válida de Moonshot: {resp.text}",
+                        provider_name="moonshot",
+                        is_transient=True,
+                        retryable=True,
+                        spoken_fallback="Hubo un error de formato al recibir respuesta de Kimi.",
+                    )
+                )
+
             latency = (time.perf_counter() - start_time) * 1000
 
             choices = data.get("choices", [])
@@ -160,7 +173,8 @@ class MoonshotAdapter(LLMProviderPort):
                     )
                 )
 
-            spoken_text = choices[0].get("message", {}).get("content", "").strip()
+            raw_content = choices[0].get("message", {}).get("content")
+            spoken_text = (raw_content or "").strip()
             usage = data.get("usage", {})
             in_tok = usage.get("prompt_tokens", 0) or 0
             out_tok = usage.get("completion_tokens", 0) or 0

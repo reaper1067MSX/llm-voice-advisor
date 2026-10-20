@@ -1,9 +1,13 @@
 """LLM Adapter and Provider Factory (Infrastructure Layer)."""
 
-import os
-from typing import List, Optional
+from __future__ import annotations
 
-from abi_coach.application.services.model_discovery import DiscoveredModelsReport
+import os
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from abi_coach.application.services.model_discovery import DiscoveredModelsReport
+
 from abi_coach.domain.ports.llm_port import LLMProviderPort
 from abi_coach.infrastructure.adapters.llm.base import LLMProvider
 from abi_coach.infrastructure.adapters.llm.gemini import GeminiProvider
@@ -101,7 +105,7 @@ def create_llm_adapter(
     for item in cascade_names:
         item_lower = item.lower().strip()
         if item_lower in ("gemini-lite", "gemini_lite", "gemini-flash-lite"):
-            lite_model = "gemini-3.1-flash-lite-preview"
+            lite_model = None
             if discovered_report and discovered_report.gemini_models:
                 candidates = [
                     "gemini-3.1-flash-lite",
@@ -113,15 +117,18 @@ def create_llm_adapter(
                     if cand in discovered_report.gemini_models and cand != primary_name:
                         lite_model = cand
                         break
+            elif not discovered_report:
+                lite_model = "gemini-3.1-flash-lite-preview"
 
-            lite_cfg = GeminiConfig(
-                model=lite_model,
-                media_resolution=config.gemini.media_resolution,
-                temperature=config.gemini.temperature,
-                api_key=gemini_key,
-                game=config.gemini.game,
-            )
-            fallbacks.append((lite_model, GeminiAdapter(lite_cfg, api_key=gemini_key)))
+            if lite_model:
+                lite_cfg = GeminiConfig(
+                    model=lite_model,
+                    media_resolution=config.gemini.media_resolution,
+                    temperature=config.gemini.temperature,
+                    api_key=gemini_key,
+                    game=config.gemini.game,
+                )
+                fallbacks.append((lite_model, GeminiAdapter(lite_cfg, api_key=gemini_key)))
 
         elif item_lower in ("moonshot", "kimi"):
             moonshot_key = config.moonshot.api_key or os.getenv("MOONSHOT_API_KEY", "")
