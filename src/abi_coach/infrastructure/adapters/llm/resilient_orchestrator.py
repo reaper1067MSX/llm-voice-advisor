@@ -57,7 +57,8 @@ class ResilientLLMOrchestrator(LLMProviderPort):
 
             if not breaker.can_execute():
                 logger.warning(
-                    f"Circuit Breaker para '{name}' está ABIERTO (OPEN). Saltando proveedor en caliente."
+                    f"Circuit Breaker para '{name}' está ABIERTO (OPEN). "
+                    "Saltando proveedor en caliente."
                 )
                 if idx + 1 < len(providers) and self.on_failover:
                     next_name = providers[idx + 1][0]
@@ -65,14 +66,30 @@ class ResilientLLMOrchestrator(LLMProviderPort):
                 continue
 
             # Intentar generar con el proveedor activo
-            res = provider.generate(
-                prompt=prompt,
-                system_instruction=system_instruction,
-                image_bytes=image_bytes,
-                crop_bytes=crop_bytes,
-                history_text=history_text,
-                tool_callback=tool_callback,
-            )
+            try:
+                res = provider.generate(
+                    prompt=prompt,
+                    system_instruction=system_instruction,
+                    image_bytes=image_bytes,
+                    crop_bytes=crop_bytes,
+                    history_text=history_text,
+                    tool_callback=tool_callback,
+                )
+            except Exception as exc:  # noqa: BLE001
+                err = ProviderError(
+                    code=f"{name.upper()}_UNEXPECTED_ERROR",
+                    message=f"Excepción inesperada en proveedor '{name}': {exc}",
+                    provider_name=name,
+                    is_transient=True,
+                    retryable=False,
+                )
+                last_error = err
+                breaker.record_failure(exc)
+                logger.warning(f"Excepción no controlada en proveedor '{name}': {exc}")
+                if idx + 1 < len(providers) and self.on_failover:
+                    next_name = providers[idx + 1][0]
+                    self.on_failover(name, f"Excepción inesperada: {exc}", next_name)
+                continue
 
             if res.is_ok():
                 breaker.record_success()
@@ -95,8 +112,13 @@ class ResilientLLMOrchestrator(LLMProviderPort):
             last_error
             or ProviderError(
                 code="ALL_PROVIDERS_UNAVAILABLE",
-                message="Todos los proveedores de IA configurados están fuera de servicio o saturados.",
+                message=(
+                    "Todos los proveedores de IA configurados están fuera de servicio o saturados."
+                ),
                 provider_name="resilient_orchestrator",
-                spoken_fallback="Disculpa, todos mis modelos en la nube están saturados en este momento. Intenta de nuevo en unos segundos.",
+                spoken_fallback=(
+                    "Disculpa, todos mis modelos en la nube están saturados en este momento. "
+                    "Intenta de nuevo en unos segundos."
+                ),
             )
         )

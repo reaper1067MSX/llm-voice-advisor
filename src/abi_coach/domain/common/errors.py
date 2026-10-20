@@ -55,10 +55,11 @@ class AmbiguousInstructionError(DomainError):
 
 @dataclass(frozen=True)
 class ProviderError(DomainError):
-    """Raised when an external model provider (Gemini / NVIDIA) returns an expected operational error."""
+    """Raised when an external model provider returns an expected operational error."""
 
     provider_name: str = "generic"
     is_transient: bool = False
+    retryable: bool = False
 
 
 @dataclass(frozen=True)

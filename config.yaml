@@ -32,8 +32,8 @@ gemini:
 
 moonshot:
   # Modelo de contingencia Kimi (Moonshot AI) o proveedores compatibles con OpenAI
-  model: "moonshot-v1-8k"
-  base_url: "https://api.moonshot.cn/v1"
+  model: "kimi-k2.6"
+  base_url: "https://api.moonshot.ai/v1"
   api_key_env: "MOONSHOT_API_KEY"
   temperature: 0.3
   max_tokens: 250
