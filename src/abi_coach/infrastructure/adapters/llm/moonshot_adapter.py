@@ -1,8 +1,8 @@
 """Moonshot AI (Kimi) Hexagonal Adapter implementing LLMProviderPort."""
 
-import json
 import time
 from typing import Any, Callable, Dict, List, Optional
+
 import httpx
 
 from abi_coach.domain.common.errors import ProviderError
@@ -17,8 +17,8 @@ class MoonshotAdapter(LLMProviderPort):
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.moonshot.cn/v1",
-        model: str = "moonshot-v1-8k",
+        base_url: str = "https://api.moonshot.ai/v1",
+        model: str = "kimi-k2.6",
         temperature: float = 0.3,
         max_tokens: int = 250,
         timeout_sec: float = 6.0,
@@ -84,11 +84,64 @@ class MoonshotAdapter(LLMProviderPort):
         try:
             resp = self._client.post(url, json=payload, headers=headers)
             if resp.status_code != 200:
+                err_msg = resp.text
+                err_type = ""
+                try:
+                    err_json = resp.json().get("error", {})
+                    if isinstance(err_json, dict):
+                        err_msg = err_json.get("message", resp.text)
+                        err_type = str(err_json.get("type", ""))
+                    elif isinstance(err_json, str):
+                        err_msg = err_json
+                except (ValueError, KeyError, AttributeError):
+                    pass
+
+                if resp.status_code == 429:
+                    is_quota = (
+                        "exceeded_current_quota_error" in err_type
+                        or "insufficient_balance" in err_type
+                        or "quota" in err_type.lower()
+                        or "quota" in err_msg.lower()
+                        or "insufficient" in err_msg.lower()
+                        or "balance" in err_msg.lower()
+                    )
+                    if is_quota:
+                        return fail(
+                            ProviderError(
+                                code="MOONSHOT_QUOTA_ERROR",
+                                message=(
+                                    f"Cuota agotada o saldo insuficiente en Moonshot: {err_msg}"
+                                ),
+                                provider_name="moonshot",
+                                is_transient=True,
+                                retryable=False,
+                                spoken_fallback=(
+                                    "La cuota de Kimi está agotada. "
+                                    "Conmutando a proveedor de respaldo."
+                                ),
+                            )
+                        )
+                    return fail(
+                        ProviderError(
+                            code="MOONSHOT_RATE_LIMIT",
+                            message=f"Límite de tasa excedido en Moonshot: {err_msg}",
+                            provider_name="moonshot",
+                            is_transient=True,
+                            retryable=True,
+                            spoken_fallback=(
+                                "Kimi está recibiendo demasiadas peticiones. "
+                                "Reintentando con respaldo."
+                            ),
+                        )
+                    )
+
                 return fail(
                     ProviderError(
                         code=f"MOONSHOT_HTTP_{resp.status_code}",
-                        message=f"Error HTTP {resp.status_code} desde Moonshot: {resp.text}",
+                        message=f"Error HTTP {resp.status_code} desde Moonshot: {err_msg}",
                         provider_name="moonshot",
+                        is_transient=(resp.status_code >= 500),
+                        retryable=False,
                         spoken_fallback="Disculpa, hubo un problema al comunicarme con Kimi.",
                     )
                 )
@@ -123,13 +176,15 @@ class MoonshotAdapter(LLMProviderPort):
                 )
             )
 
-        except Exception as e:
+        except (httpx.HTTPError, OSError) as e:
             latency = (time.perf_counter() - start_time) * 1000
             return fail(
                 ProviderError(
                     code="MOONSHOT_NETWORK_ERROR",
                     message=f"Error de conexión con Moonshot (Kimi): {e}",
                     provider_name="moonshot",
+                    is_transient=True,
+                    retryable=True,
                     spoken_fallback="Hubo un error de conexión con Kimi.",
                 )
             )

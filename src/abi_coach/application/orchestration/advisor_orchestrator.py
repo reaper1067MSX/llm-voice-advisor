@@ -25,7 +25,7 @@ from abi_coach.domain.entities.interaction_records import InteractionRequest, In
 from abi_coach.domain.entities.tactical_state import TacticalState
 from abi_coach.domain.ports.blackboard_port import BlackboardPort
 from abi_coach.infrastructure.adapters.llm.base import LLMProvider
-from abi_coach.infrastructure.adapters.llm.factory import create_llm_provider
+from abi_coach.infrastructure.adapters.llm.factory import create_llm_adapter
 from abi_coach.infrastructure.adapters.storage.db import DatabaseManager
 from abi_coach.infrastructure.adapters.storage.in_memory_blackboard import InMemoryBlackboard
 from abi_coach.infrastructure.config.settings import AppConfig
@@ -55,14 +55,14 @@ class AdvisorOrchestrator:
     """Unified generic orchestrator coordinating tactical interaction resolution."""
 
     def __init__(
-        self, config: Optional[AppConfig] = None, provider: Optional[LLMProvider] = None,
+        self, config: Optional[AppConfig] = None, provider: Optional[Any] = None,
         services: Optional[AdvisorServices] = None, report_opener: Optional[Callable[[str], Any]] = None,
         **kwargs: Any,
     ) -> None:
         from abi_coach.application.orchestration.fsm import TacticalFSM
 
         self.config, self.report_opener = config or AppConfig(), report_opener
-        self.provider = provider or create_llm_provider(self.config)
+        self.provider = provider or create_llm_adapter(self.config)
         svc = services or AdvisorServices()
         for k, v in kwargs.items():
             if hasattr(svc, k) and getattr(svc, k) is None:
