@@ -1,20 +1,34 @@
 """Domain Entities and Aggregates package."""
 
+from abi_coach.domain.entities.archetype_entities import (
+    SPANISH_FTS_STOPWORDS,
+    ArchetypeDefinition,
+    DynamicEntity,
+    EngramObservation,
+    TopicContext,
+)
 from abi_coach.domain.entities.context_switch_records import ContextSwitchRequest
-from abi_coach.domain.entities.dashboard_records import KnowledgeDashboardItem, MemoryDashboardItem
+from abi_coach.domain.entities.dashboard_records import (
+    KnowledgeDashboardItem,
+    MemoryDashboardItem,
+)
 from abi_coach.domain.entities.game_context import GameContext
-from abi_coach.domain.entities.interaction_records import CoachResponse, InteractionRequest, InteractionResult
+from abi_coach.domain.entities.interaction_records import (
+    CoachResponse,
+    InteractionRequest,
+    InteractionResult,
+)
 from abi_coach.domain.entities.metatuning_records import (
     CANCELLATION_PHRASES,
     CONFIRMATION_RULES,
+    RESOLUTION_RULES,
+    VOICE_MAP,
     ClarificationResolution,
     ClarificationState,
     ParsedConfig,
     ParsedFact,
     ParsedRule,
-    RESOLUTION_RULES,
     RuleMapping,
-    VOICE_MAP,
     is_cancellation_phrase,
 )
 from abi_coach.domain.entities.player_memory import PlayerMemory
@@ -23,6 +37,11 @@ from abi_coach.domain.entities.tactical_state import GameStateContext, TacticalS
 from abi_coach.domain.entities.tuning_rule import MetaTuningDirective, TuningRule
 
 __all__ = [
+    "SPANISH_FTS_STOPWORDS",
+    "ArchetypeDefinition",
+    "TopicContext",
+    "DynamicEntity",
+    "EngramObservation",
     "GameContext",
     "PlayerMemory",
     "TacticalFact",

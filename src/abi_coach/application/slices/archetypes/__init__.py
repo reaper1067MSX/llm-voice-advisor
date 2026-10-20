@@ -1,4 +1,4 @@
-"""Archetypes Slice: Foundational domain blueprints, dynamic entities, and zero-seeder onboarding."""
+"""Archetypes Slice: Foundational domain blueprints and dynamic entities."""
 
 from abi_coach.application.slices.archetypes.manager import (
     ArchetypeDefinition,
@@ -7,11 +7,13 @@ from abi_coach.application.slices.archetypes.manager import (
     EngramObservation,
     TopicContext,
 )
+from abi_coach.application.slices.archetypes.prompt_formatter import ArchetypePromptFormatter
 from abi_coach.application.slices.archetypes.scaffolder import ArchetypeScaffolder
 
 __all__ = [
     "ArchetypeDefinition",
     "ArchetypeManager",
+    "ArchetypePromptFormatter",
     "ArchetypeScaffolder",
     "DynamicEntity",
     "EngramObservation",
