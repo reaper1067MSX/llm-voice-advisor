@@ -2,7 +2,13 @@
 
 from abi_coach.infrastructure.adapters.storage.cache import CacheEntry
 from abi_coach.infrastructure.adapters.storage.in_memory_blackboard import InMemoryBlackboard
-from abi_coach.infrastructure.adapters.storage.sqlite_knowledge_repo import SqliteKnowledgeRepository
+from abi_coach.infrastructure.adapters.storage.sqlite_archetype_repository import (
+    SqliteArchetypeRepository,
+    sanitize_fts_query,
+)
+from abi_coach.infrastructure.adapters.storage.sqlite_knowledge_repo import (
+    SqliteKnowledgeRepository,
+)
 from abi_coach.infrastructure.adapters.storage.sqlite_manager import DatabaseManager, MindCacheLRU
 from abi_coach.infrastructure.adapters.storage.sqlite_memory_repo import SqliteMemoryRepository
 
@@ -10,8 +16,9 @@ __all__ = [
     "CacheEntry",
     "DatabaseManager",
     "MindCacheLRU",
+    "SqliteArchetypeRepository",
+    "sanitize_fts_query",
     "SqliteKnowledgeRepository",
     "SqliteMemoryRepository",
     "InMemoryBlackboard",
 ]
-

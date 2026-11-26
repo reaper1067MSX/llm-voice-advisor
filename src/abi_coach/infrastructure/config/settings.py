@@ -1,11 +1,16 @@
 """Configuration management for ABI Coach (Core)."""
 
-from dataclasses import dataclass, field
+import logging
 import os
+import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from dotenv import load_dotenv
+
 import yaml
+from dotenv import load_dotenv
+
+logger = logging.getLogger("abi_coach.config")
 
 
 @dataclass
@@ -32,8 +37,8 @@ class NvidiaConfig:
 
 @dataclass
 class MoonshotConfig:
-    model: str = "moonshot-v1-8k"
-    base_url: str = "https://api.moonshot.cn/v1"
+    model: str = "kimi-k2.6"
+    base_url: str = "https://api.moonshot.ai/v1"
     temperature: float = 0.3
     max_tokens: int = 250
     api_key: Optional[str] = None
@@ -128,11 +133,11 @@ class AppConfig:
     history: HistoryConfig = field(default_factory=HistoryConfig)
 
 
-import sys
-
-
 def load_config(config_path: Optional[str] = None) -> AppConfig:
-    """Load configuration from YAML and environment variables, supporting frozen exe and dedicated keys file."""
+    """Load configuration from YAML and environment variables.
+
+    Supports frozen exe and dedicated keys file.
+    """
     # 1. Determine root application directory
     if getattr(sys, "frozen", False):
         base_dir = Path(sys.executable).parent
@@ -169,8 +174,8 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
                         os.environ["NVIDIA_API_KEY"] = str(k_data["nvidia_api_key"]).strip()
                     if "moonshot_api_key" in k_data and not os.getenv("MOONSHOT_API_KEY"):
                         os.environ["MOONSHOT_API_KEY"] = str(k_data["moonshot_api_key"]).strip()
-            except Exception:
-                pass
+            except (OSError, yaml.YAMLError) as exc:
+                logger.debug("Error leyendo keys.yaml: %s", exc)
 
     # 4. Resolve target config.yaml path
     if config_path is None:
@@ -276,8 +281,8 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     msh_raw = raw.get("moonshot", {})
     msh_key_env = str(msh_raw.get("api_key_env", "MOONSHOT_API_KEY"))
     msh_cfg = MoonshotConfig(
-        model=str(msh_raw.get("model", "moonshot-v1-8k")),
-        base_url=str(msh_raw.get("base_url", "https://api.moonshot.cn/v1")),
+        model=str(msh_raw.get("model", "kimi-k2.6")),
+        base_url=str(msh_raw.get("base_url", "https://api.moonshot.ai/v1")),
         temperature=float(msh_raw.get("temperature", 0.3)),
         max_tokens=int(msh_raw.get("max_tokens", 250)),
         api_key=msh_raw.get("api_key") or os.getenv(msh_key_env),
