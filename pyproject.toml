@@ -11,6 +11,7 @@ dependencies = [
     "edge-tts>=7.3.1",
     "faster-whisper>=1.2.1",
     "google-genai>=2.30.1",
+    "httpx>=0.28.1",
     "miniaudio>=1.71",
     "mss>=10.2.0",
     "numpy>=2.5.4",
@@ -72,7 +73,6 @@ layers = [
 ]
 # Excepciones históricas de instanciación por defecto (a eliminar en Etapas 4-5):
 ignore_imports = [
-    "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.llm.base",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.llm.factory",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.storage.db",
     "abi_coach.application.orchestration.advisor_orchestrator -> abi_coach.infrastructure.adapters.storage.in_memory_blackboard",
